@@ -1,2 +1,2 @@
 ﻿# Project Log
-- [x] Project structure created
+- Project structure created
