@@ -3,29 +3,36 @@ from pydantic import BaseModel
 from typing import List, Optional
 from app.services.amfi_fetcher import get_latest_nav
 from app.services.portfolio_calculator import calculate_portfolio_valuation
+from app.services.historical_tracker import calculate_performance_metrics
 
 app = FastAPI(title="MyCAMS Clone API")
 
-# Temporary in-memory list of active holdings (Sample MFs)
+# Active Portfolio Holdings (Feature B)
 SAMPLE_PORTFOLIO = [
     {
-        "scheme_code": "120503", # Parag Parikh Flexi Cap Fund - Direct Growth
+        "scheme_code": "120503",
         "scheme_name": "Parag Parikh Flexi Cap Fund Direct Growth",
         "units": 125.40,
         "avg_buy_price": 65.20
     },
     {
-        "scheme_code": "118834", # Mirae Asset Large & Midcap Fund - Direct Growth
+        "scheme_code": "118834",
         "scheme_name": "Mirae Asset Large & Midcap Fund Direct Growth",
         "units": 210.00,
         "avg_buy_price": 102.50
     },
     {
-        "scheme_code": "125354", # Quant Small Cap Fund - Direct Plan - Growth
+        "scheme_code": "125354",
         "scheme_name": "Quant Small Cap Fund Direct Growth",
         "units": 85.12,
         "avg_buy_price": 180.10
     }
+]
+
+# Inactive / Monitored Watchlist (Feature A)
+INACTIVE_WATCHLIST = [
+    "100033", # Aditya Birla Sun Life Frontline Equity Fund
+    "101010", # HDFC Top 100 Fund
 ]
 
 class HoldingInput(BaseModel):
@@ -47,11 +54,35 @@ def fetch_nav(scheme_code: str):
 
 @app.get("/api/portfolio")
 def get_current_portfolio():
-    """Calculates live valuation for currently active holdings."""
     return calculate_portfolio_valuation(SAMPLE_PORTFOLIO)
 
 @app.post("/api/portfolio/calculate")
 def calculate_custom_portfolio(holdings: List[HoldingInput]):
-    """Accepts any list of holdings and returns full portfolio valuation."""
     holdings_dict = [h.model_dump() for h in holdings]
     return calculate_portfolio_valuation(holdings_dict)
+
+# --- Feature A: Inactive & Historical Tracking ---
+
+@app.get("/api/tracker/watchlist")
+def get_watchlist_summary():
+    """Returns return metrics for all inactive tracked funds."""
+    results = []
+    for code in INACTIVE_WATCHLIST:
+        metrics = calculate_performance_metrics(code)
+        if metrics:
+            results.append({
+                "scheme_code": metrics["scheme_code"],
+                "scheme_name": metrics["scheme_name"],
+                "category": metrics["category"],
+                "latest_nav": metrics["latest_nav"],
+                "metrics": metrics["metrics"]
+            })
+    return results
+
+@app.get("/api/tracker/fund/{scheme_code}")
+def get_fund_tracking_detail(scheme_code: str):
+    """Returns detailed metrics and 1-year historical chart points for a fund."""
+    result = calculate_performance_metrics(scheme_code)
+    if not result:
+        raise HTTPException(status_code=404, detail="Historical fund data not found")
+    return result
