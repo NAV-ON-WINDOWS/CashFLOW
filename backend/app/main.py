@@ -26,32 +26,7 @@ app.add_middleware(
 )
 
 # In-memory Active Holdings Data Store
-SAMPLE_HOLDINGS = [
-    {
-        "scheme_code": "120503",
-        "scheme_name": "Axis ELSS- Tax Saver Fund - Direct Plan - Growth Option",
-        "units": 125.400,
-        "avg_buy_price": 65.20,
-        "folio_number": "FOLIO-1001",
-        "purchase_date": "2024-01-15"
-    },
-    {
-        "scheme_code": "118834",
-        "scheme_name": "Mirae Asset Large & Midcap Fund - Direct Plan - Growth",
-        "units": 210.000,
-        "avg_buy_price": 102.50,
-        "folio_number": "FOLIO-1002",
-        "purchase_date": "2023-11-10"
-    },
-    {
-        "scheme_code": "125354",
-        "scheme_name": "Axis Small Cap Fund - Direct Plan - Growth Option",
-        "units": 85.120,
-        "avg_buy_price": 180.10,
-        "folio_number": "FOLIO-1003",
-        "purchase_date": "2024-03-01"
-    }
-]
+SAMPLE_HOLDINGS = []
 
 # In-memory Watchlist Scheme Codes
 INACTIVE_WATCHLIST = [
@@ -176,3 +151,29 @@ def get_fund_details(scheme_code: str):
     if not data:
         raise HTTPException(status_code=404, detail="Scheme details not found")
     return data
+
+class ActiveFundUpdate(BaseModel):
+    scheme_name: str
+    units: float
+    avg_buy_price: float
+    folio_number: Optional[str] = "FOLIO-DEFAULT"
+
+@app.put("/api/portfolio/fund/{scheme_code}")
+def update_fund(scheme_code: str, payload: ActiveFundUpdate):
+    for holding in SAMPLE_HOLDINGS:
+        if holding.get("scheme_code") == scheme_code:
+            holding["scheme_name"] = payload.scheme_name.strip()
+            holding["units"] = payload.units
+            holding["avg_buy_price"] = payload.avg_buy_price
+            holding["folio_number"] = payload.folio_number
+            return {"message": "Fund updated successfully", "scheme_code": scheme_code}
+    raise HTTPException(status_code=404, detail="Fund not found")
+
+@app.delete("/api/portfolio/fund/{scheme_code}")
+def delete_fund(scheme_code: str):
+    global SAMPLE_HOLDINGS
+    initial_count = len(SAMPLE_HOLDINGS)
+    SAMPLE_HOLDINGS = [h for h in SAMPLE_HOLDINGS if h.get("scheme_code") != scheme_code]
+    if len(SAMPLE_HOLDINGS) == initial_count:
+        raise HTTPException(status_code=404, detail="Fund not found")
+    return {"message": "Fund deleted successfully", "scheme_code": scheme_code}
