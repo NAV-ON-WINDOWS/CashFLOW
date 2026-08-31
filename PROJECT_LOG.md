@@ -5,3 +5,4 @@
 - [4] Implemented portfolio valuation computation engine for active holdings.
 - [5] Implemented historical NAV ingestion and performance metrics for inactive/tracked funds.
 - [6] Fixed and validated AMFI live NAV data extraction with end-of-line indexing.
+- [7] Implemented Next.js frontend with active portfolio overview and inactive fund watchlist tabs.
