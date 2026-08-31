@@ -63,25 +63,40 @@ export default function Home() {
       <header className="border-b border-slate-200 bg-white px-8 py-4 shadow-sm flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-800">myCAMS Portfolio Monitor</h1>
-          <p className="text-xs text-slate-500">Real-time daily valuation & historical tracker</p>
+          <p className="text-xs text-slate-500">
+            Consolidated Account Statement • Generated on {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+          </p>
         </div>
-        <div className="flex space-x-2 bg-slate-100 p-1 rounded-lg">
+
+        <div className="flex items-center space-x-3">
           <button
-            onClick={() => setActiveTab('portfolio')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
-              activeTab === 'portfolio' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
-            }`}
+            onClick={() => window.print()}
+            className="no-print inline-flex items-center space-x-1.5 bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition shadow-sm"
           >
-            Active Portfolio
+            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>Export PDF</span>
           </button>
-          <button
-            onClick={() => setActiveTab('watchlist')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
-              activeTab === 'watchlist' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Tracked Watchlist
-          </button>
+
+          <div className="no-print flex space-x-2 bg-slate-100 p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab('portfolio')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
+                activeTab === 'portfolio' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Active Portfolio
+            </button>
+            <button
+              onClick={() => setActiveTab('watchlist')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
+                activeTab === 'watchlist' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Tracked Watchlist
+            </button>
+          </div>
         </div>
       </header>
 
@@ -122,11 +137,11 @@ export default function Home() {
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div>
                   <h2 className="text-base font-semibold text-slate-800">Active Schemes ({portfolio.holdings.length})</h2>
-                  <span className="text-xs text-slate-500">Click row for NAV chart</span>
+                  <span className="text-xs text-slate-500 no-print">Click row for NAV chart</span>
                 </div>
                 <button
                   onClick={() => setShowTxModal(true)}
-                  className="bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-blue-700 transition"
+                  className="no-print bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-blue-700 transition"
                 >
                   + Add Investment
                 </button>
@@ -142,7 +157,7 @@ export default function Home() {
                     <p className="text-xs text-slate-500 mt-1 mb-4">Start tracking your mutual funds by adding your first holding.</p>
                     <button
                       onClick={() => setShowTxModal(true)}
-                      className="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      className="no-print bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
                     >
                       + Add Your First Fund
                     </button>
@@ -157,7 +172,7 @@ export default function Home() {
                         <th className="px-6 py-3 text-right">Latest NAV</th>
                         <th className="px-6 py-3 text-right">Current Value</th>
                         <th className="px-6 py-3 text-right">Gain / Loss</th>
-                        <th className="px-6 py-3 text-center">Actions</th>
+                        <th className="px-6 py-3 text-center no-print">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -182,7 +197,7 @@ export default function Home() {
                               {fund.profit_loss >= 0 ? '+' : ''}₹{fund.profit_loss.toFixed(2)} ({fund.returns_percentage}%)
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-6 py-4 text-center no-print">
                             <div className="flex items-center justify-center space-x-2">
                               <button
                                 onClick={(e) => {
@@ -221,7 +236,7 @@ export default function Home() {
                 </div>
                 <button 
                   onClick={() => setShowAddModal(true)}
-                  className="bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-slate-700 transition"
+                  className="no-print bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-slate-700 transition"
                 >
                   + Add Fund
                 </button>
