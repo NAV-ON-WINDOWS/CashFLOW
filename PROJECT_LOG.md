@@ -8,4 +8,5 @@
 - [7] Implemented Next.js frontend with active portfolio overview and inactive fund watchlist tabs.
 - [8] Connected frontend to historical NAV timeseries with resilient fallback handling and area chart modal.
 - [9] Integrated transaction entry modal with real-time portfolio recalculation and complete UI workflow.
-- [10] Added a button to "Add Mutual Fund" manually for additional investments.
+- [10] Added button to "Add Mutual Fund" manually for additional investments.
+- [11] Added button to "Edit" MF
