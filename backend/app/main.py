@@ -4,8 +4,19 @@ from typing import List, Optional
 from app.services.amfi_fetcher import get_latest_nav
 from app.services.portfolio_calculator import calculate_portfolio_valuation
 from app.services.historical_tracker import calculate_performance_metrics
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 app = FastAPI(title="MyCAMS Clone API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Active Portfolio Holdings (Feature B)
 SAMPLE_PORTFOLIO = [
