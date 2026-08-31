@@ -10,3 +10,6 @@
 - [9] Integrated transaction entry modal with real-time portfolio recalculation and complete UI workflow.
 - [10] Added button to "Add Mutual Fund" manually for additional investments.
 - [11] Added button to "Edit" MF
+- [12] Implemented SQLite and SQLAlchemy for zero-config persistent storage of portfolio and watchlist data.
+- [13] Built full CRUD capabilities (Edit/Delete) for active holdings with real-time UI updates.
+- [14] Fixed Axios instance exports and integrated empty-state UI for new portfolios.

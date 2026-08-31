@@ -1,22 +1,19 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional
+from sqlalchemy.orm import Session
 
 from app.services.amfi_fetcher import get_latest_nav
 from app.services.historical_tracker import calculate_performance_metrics
+from app.database import engine, get_db
+from app import models
+
+# Tell SQLAlchemy to create the database file and tables if they don't exist yet!
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="myCAMS Portfolio Monitor API")
 
-@app.get("/")
-def read_root():
-    return {
-        "status": "healthy",
-        "message": "myCAMS Portfolio Monitor API is running",
-        "docs": "/docs"
-    }
-
-# Enable CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,17 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory Active Holdings Data Store
-SAMPLE_HOLDINGS = []
-
-# In-memory Watchlist Scheme Codes
-INACTIVE_WATCHLIST = [
-    "120716",  # UTI Nifty 50 Index Fund - Direct Growth
-    "118989",  # HDFC Mid-Cap Opportunities Fund - Direct Growth
-    "120503",  # Axis ELSS Tax Saver
-]
-
-# Request Schemas
+# --- REQUEST SCHEMAS ---
 class ActiveFundCreate(BaseModel):
     scheme_name: str
     scheme_code: Optional[str] = None
@@ -44,33 +31,46 @@ class ActiveFundCreate(BaseModel):
     folio_number: Optional[str] = "FOLIO-DEFAULT"
     purchase_date: Optional[str] = None
 
+class ActiveFundUpdate(BaseModel):
+    scheme_name: str
+    units: float
+    avg_buy_price: float
+    folio_number: Optional[str] = "FOLIO-DEFAULT"
+
 class WatchlistAdd(BaseModel):
     scheme_code: str
 
 
+@app.get("/")
+def read_root():
+    return {"status": "healthy", "message": "API is running with SQLite!"}
+
+
+# --- PORTFOLIO ENDPOINTS ---
 @app.get("/api/portfolio")
-def get_portfolio():
+def get_portfolio(db: Session = Depends(get_db)):
     total_invested = 0.0
     total_current_value = 0.0
     enriched_holdings = []
 
-    for item in SAMPLE_HOLDINGS:
-        code = item["scheme_code"]
-        units = item["units"]
-        avg_price = item["avg_buy_price"]
+    # Read from the database instead of the in-memory list
+    holdings = db.query(models.Holding).all()
+
+    for item in holdings:
+        code = item.scheme_code
+        units = item.units
+        avg_price = item.avg_buy_price
         invested_amt = units * avg_price
         total_invested += invested_amt
 
-        # Query live AMFI NAV
         nav_info = get_latest_nav(code) if not code.startswith("CUSTOM") else None
         
         current_nav = nav_info["nav"] if (nav_info and nav_info.get("nav", 0) > 0) else avg_price
-        nav_date = nav_info["date"] if nav_info else (item.get("purchase_date") or "N/A")
-        scheme_name = item.get("scheme_name") or (nav_info["scheme_name"] if nav_info else f"Scheme {code}")
+        nav_date = nav_info["date"] if nav_info else (item.purchase_date or "N/A")
+        scheme_name = nav_info["scheme_name"] if nav_info else item.scheme_name
 
         current_val = units * current_nav
         total_current_value += current_val
-
         pnl = current_val - invested_amt
         returns_pct = round((pnl / invested_amt) * 100, 2) if invested_amt > 0 else 0.0
 
@@ -84,7 +84,7 @@ def get_portfolio():
             "profit_loss": round(pnl, 2),
             "returns_percentage": returns_pct,
             "nav_date": nav_date,
-            "folio_number": item.get("folio_number", "N/A")
+            "folio_number": item.folio_number
         })
 
     total_profit_loss = total_current_value - total_invested
@@ -102,47 +102,90 @@ def get_portfolio():
 
 
 @app.post("/api/portfolio/transaction")
-def add_active_fund(fund: ActiveFundCreate):
-    code = fund.scheme_code.strip() if fund.scheme_code else f"CUSTOM_{len(SAMPLE_HOLDINGS) + 1}"
+def add_active_fund(fund: ActiveFundCreate, db: Session = Depends(get_db)):
+    # Generate custom code if none provided
+    if fund.scheme_code:
+        code = fund.scheme_code.strip()
+    else:
+        count = db.query(models.Holding).count()
+        code = f"CUSTOM_{count + 1}"
 
-    existing = next((h for h in SAMPLE_HOLDINGS if h.get("scheme_code") == code), None)
+    existing = db.query(models.Holding).filter(models.Holding.scheme_code == code).first()
 
     if existing:
-        total_units = existing["units"] + fund.units
-        total_cost = (existing["units"] * existing["avg_buy_price"]) + (fund.units * fund.avg_buy_price)
-        existing["units"] = round(total_units, 4)
-        existing["avg_buy_price"] = round(total_cost / total_units, 2)
+        # Update existing record
+        total_units = existing.units + fund.units
+        total_cost = (existing.units * existing.avg_buy_price) + (fund.units * fund.avg_buy_price)
+        existing.units = round(total_units, 4)
+        existing.avg_buy_price = round(total_cost / total_units, 2)
         if fund.folio_number:
-            existing["folio_number"] = fund.folio_number
+            existing.folio_number = fund.folio_number
     else:
-        SAMPLE_HOLDINGS.append({
-            "scheme_code": code,
-            "scheme_name": fund.scheme_name.strip(),
-            "units": fund.units,
-            "avg_buy_price": fund.avg_buy_price,
-            "folio_number": fund.folio_number,
-            "purchase_date": fund.purchase_date
-        })
+        # Create brand new record
+        new_holding = models.Holding(
+            scheme_code=code,
+            scheme_name=fund.scheme_name.strip(),
+            units=fund.units,
+            avg_buy_price=fund.avg_buy_price,
+            folio_number=fund.folio_number,
+            purchase_date=fund.purchase_date
+        )
+        db.add(new_holding)
+    
+    # Save the changes to the notebook!
+    db.commit()
+    return {"message": "Fund saved to database", "scheme_code": code}
 
-    return {"message": "Fund registered successfully", "scheme_code": code}
+
+@app.put("/api/portfolio/fund/{scheme_code}")
+def update_fund(scheme_code: str, payload: ActiveFundUpdate, db: Session = Depends(get_db)):
+    existing = db.query(models.Holding).filter(models.Holding.scheme_code == scheme_code).first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Fund not found")
+    
+    existing.scheme_name = payload.scheme_name.strip()
+    existing.units = payload.units
+    existing.avg_buy_price = payload.avg_buy_price
+    existing.folio_number = payload.folio_number
+    
+    db.commit()
+    return {"message": "Fund updated successfully"}
 
 
+@app.delete("/api/portfolio/fund/{scheme_code}")
+def delete_fund(scheme_code: str, db: Session = Depends(get_db)):
+    existing = db.query(models.Holding).filter(models.Holding.scheme_code == scheme_code).first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Fund not found")
+    
+    db.delete(existing)
+    db.commit()
+    return {"message": "Fund deleted permanently"}
+
+
+# --- WATCHLIST ENDPOINTS ---
 @app.get("/api/tracker/watchlist")
-def get_watchlist():
+def get_watchlist(db: Session = Depends(get_db)):
+    watchlist_items = db.query(models.WatchlistItem).all()
     results = []
-    for code in INACTIVE_WATCHLIST:
-        metrics = calculate_performance_metrics(code)
+    for item in watchlist_items:
+        metrics = calculate_performance_metrics(item.scheme_code)
         if metrics:
             results.append(metrics)
     return results
 
 
 @app.post("/api/tracker/watchlist")
-def add_to_watchlist(item: WatchlistAdd):
+def add_to_watchlist(item: WatchlistAdd, db: Session = Depends(get_db)):
     code = item.scheme_code.strip()
-    if code not in INACTIVE_WATCHLIST:
-        INACTIVE_WATCHLIST.append(code)
-    return {"message": "Success", "code": code}
+    existing = db.query(models.WatchlistItem).filter(models.WatchlistItem.scheme_code == code).first()
+    
+    if not existing:
+        new_item = models.WatchlistItem(scheme_code=code)
+        db.add(new_item)
+        db.commit()
+        
+    return {"message": "Saved to watchlist", "code": code}
 
 
 @app.get("/api/tracker/fund/{scheme_code}")
@@ -151,29 +194,3 @@ def get_fund_details(scheme_code: str):
     if not data:
         raise HTTPException(status_code=404, detail="Scheme details not found")
     return data
-
-class ActiveFundUpdate(BaseModel):
-    scheme_name: str
-    units: float
-    avg_buy_price: float
-    folio_number: Optional[str] = "FOLIO-DEFAULT"
-
-@app.put("/api/portfolio/fund/{scheme_code}")
-def update_fund(scheme_code: str, payload: ActiveFundUpdate):
-    for holding in SAMPLE_HOLDINGS:
-        if holding.get("scheme_code") == scheme_code:
-            holding["scheme_name"] = payload.scheme_name.strip()
-            holding["units"] = payload.units
-            holding["avg_buy_price"] = payload.avg_buy_price
-            holding["folio_number"] = payload.folio_number
-            return {"message": "Fund updated successfully", "scheme_code": scheme_code}
-    raise HTTPException(status_code=404, detail="Fund not found")
-
-@app.delete("/api/portfolio/fund/{scheme_code}")
-def delete_fund(scheme_code: str):
-    global SAMPLE_HOLDINGS
-    initial_count = len(SAMPLE_HOLDINGS)
-    SAMPLE_HOLDINGS = [h for h in SAMPLE_HOLDINGS if h.get("scheme_code") != scheme_code]
-    if len(SAMPLE_HOLDINGS) == initial_count:
-        raise HTTPException(status_code=404, detail="Fund not found")
-    return {"message": "Fund deleted successfully", "scheme_code": scheme_code}

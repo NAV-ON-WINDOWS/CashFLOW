@@ -1,6 +1,13 @@
 import axios from 'axios';
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+export const API_BASE = 'http://localhost:8000/api';
+
+const api = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 export interface Holding {
   scheme_code: string;
@@ -8,11 +15,11 @@ export interface Holding {
   units: number;
   avg_buy_price: number;
   current_nav: number;
-  nav_date: string;
-  invested_value: number;
   current_value: number;
   profit_loss: number;
   returns_percentage: number;
+  nav_date: string;
+  folio_number?: string;
 }
 
 export interface PortfolioSummary {
@@ -20,7 +27,6 @@ export interface PortfolioSummary {
   total_current_value: number;
   total_profit_loss: number;
   overall_return_percentage: number;
-  active_funds_count: number;
 }
 
 export interface PortfolioResponse {
@@ -33,6 +39,7 @@ export interface WatchlistFund {
   scheme_name: string;
   category: string;
   latest_nav: number;
+  latest_nav_date: string;
   metrics: {
     return_1m_pct: number | null;
     return_6m_pct: number | null;
@@ -42,16 +49,18 @@ export interface WatchlistFund {
 }
 
 export const fetchPortfolio = async (): Promise<PortfolioResponse> => {
-  const res = await axios.get(`${API_BASE}/portfolio`);
+  const res = await api.get('/portfolio');
   return res.data;
 };
 
 export const fetchWatchlist = async (): Promise<WatchlistFund[]> => {
-  const res = await axios.get(`${API_BASE}/tracker/watchlist`);
+  const res = await api.get('/tracker/watchlist');
   return res.data;
 };
 
 export const fetchFundDetail = async (schemeCode: string) => {
-  const res = await axios.get(`${API_BASE}/tracker/fund/${schemeCode}`);
+  const res = await api.get(`/tracker/fund/${schemeCode}`);
   return res.data;
 };
+
+export default api;

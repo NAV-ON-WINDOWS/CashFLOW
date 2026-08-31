@@ -1,23 +1,21 @@
-import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Load environment variables from .env file
-load_dotenv()
+# This tells SQLite to create a file named "portfolio.db" in your backend folder
+SQLALCHEMY_DATABASE_URL = "sqlite:///./portfolio.db"
 
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+# The engine is the actual connection to the file
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+)
 
-# Create the database engine
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-
-# Create a configured "Session" class
+# A session is a temporary workspace for a single request (like a blank page)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Create a Base class for our models to inherit from
+# Base is the master template that all our database tables will inherit from
 Base = declarative_base()
 
-# Dependency to get the database session in our routes
+# This helper function gives a database session to our routes and closes it when done
 def get_db():
     db = SessionLocal()
     try:
