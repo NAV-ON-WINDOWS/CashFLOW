@@ -4,3 +4,4 @@
 - [3] Created AMFI data fetching service and /api/nav endpoint.
 - [4] Implemented portfolio valuation computation engine for active holdings.
 - [5] Implemented historical NAV ingestion and performance metrics for inactive/tracked funds.
+- [6] Fixed and validated AMFI live NAV data extraction with end-of-line indexing.
