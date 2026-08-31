@@ -1,33 +1,59 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import AddWatchlistModal from '../components/AddWatchlistModal';
+import AddTransactionModal from '../components/AddTransactionModal';
+import NavChartModal from '../components/NavChartModal';
 import { fetchPortfolio, fetchWatchlist, PortfolioResponse, WatchlistFund } from '../lib/api';
 
 export default function Home() {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showTxModal, setShowTxModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioResponse | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistFund[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'portfolio' | 'watchlist'>('portfolio');
+  const [selectedScheme, setSelectedScheme] = useState<string | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    let isSubscribed = true;
+
     async function loadData() {
       try {
         const [pData, wData] = await Promise.all([
           fetchPortfolio(),
           fetchWatchlist()
         ]);
-        setPortfolio(pData);
-        setWatchlist(wData);
-      } catch (err) {
-        console.error('Error fetching data:', err);
+        if (isSubscribed) {
+          setPortfolio(pData);
+          setWatchlist(wData);
+        }
+      } catch (err: any) {
+        if (isSubscribed) {
+          console.error('Error fetching data:', err);
+        }
       } finally {
-        setLoading(false);
+        if (isSubscribed) {
+          setLoading(false);
+        }
       }
     }
-    loadData();
-  }, []);
 
-  if (loading) {
+    loadData();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [mounted]);
+
+  if (!mounted || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-700 font-sans">
         <div className="animate-pulse text-lg font-medium">Fetching mutual fund data from AMFI...</div>
@@ -37,7 +63,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      {/* Top Navbar */}
       <header className="border-b border-slate-200 bg-white px-8 py-4 shadow-sm flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-800">myCAMS Portfolio Monitor</h1>
@@ -66,7 +91,6 @@ export default function Home() {
       <main className="max-w-6xl mx-auto p-8">
         {activeTab === 'portfolio' && portfolio && (
           <div>
-            {/* Top Metric Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Invested Capital</span>
@@ -97,11 +121,18 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Holdings Table */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                <h2 className="text-base font-semibold text-slate-800">Active Schemes ({portfolio.holdings.length})</h2>
-                <span className="text-xs text-slate-500">Live AMFI NAV EOD sync</span>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-800">Active Schemes ({portfolio.holdings.length})</h2>
+                  <span className="text-xs text-slate-500">Click any row to plot NAV chart</span>
+                </div>
+                <button
+                  onClick={() => setShowTxModal(true)}
+                  className="bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-blue-700 transition"
+                >
+                  + Add Investment
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
@@ -117,7 +148,11 @@ export default function Home() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {portfolio.holdings.map((fund) => (
-                      <tr key={fund.scheme_code} className="hover:bg-slate-50/50 transition">
+                      <tr
+                        key={fund.scheme_code}
+                        onClick={() => setSelectedScheme(fund.scheme_code)}
+                        className="hover:bg-blue-50/40 cursor-pointer transition"
+                      >
                         <td className="px-6 py-4 font-medium text-slate-900">
                           <div>{fund.scheme_name}</div>
                           <span className="text-xs text-slate-400 font-mono">Code: {fund.scheme_code} • {fund.nav_date}</span>
@@ -148,8 +183,14 @@ export default function Home() {
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div>
                   <h2 className="text-base font-semibold text-slate-800">Monitored / Inactive Funds</h2>
-                  <p className="text-xs text-slate-500">Historical performance metrics to assess future re-investment</p>
+                  <p className="text-xs text-slate-500">Historical performance metrics • Click any row to view chart</p>
                 </div>
+                <button 
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-slate-700 transition"
+                >
+                  + Add Fund
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
@@ -165,7 +206,11 @@ export default function Home() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {watchlist.map((fund) => (
-                      <tr key={fund.scheme_code} className="hover:bg-slate-50/50 transition">
+                      <tr
+                        key={fund.scheme_code}
+                        onClick={() => setSelectedScheme(fund.scheme_code)}
+                        className="hover:bg-blue-50/40 cursor-pointer transition"
+                      >
                         <td className="px-6 py-4">
                           <div className="font-medium text-slate-900">{fund.scheme_name}</div>
                           <span className="text-xs text-slate-400">{fund.category} • Code: {fund.scheme_code}</span>
@@ -198,6 +243,31 @@ export default function Home() {
               </div>
             </div>
           </div>
+        )}
+
+        <NavChartModal
+          schemeCode={selectedScheme}
+          onClose={() => setSelectedScheme(null)}
+        />
+        
+        {showAddModal && (
+          <AddWatchlistModal 
+            onClose={() => setShowAddModal(false)} 
+            onSuccess={() => {
+              setShowAddModal(false);
+              window.location.reload(); 
+            }} 
+          />
+        )}
+
+        {showTxModal && (
+          <AddTransactionModal
+            onClose={() => setShowTxModal(false)}
+            onSuccess={() => {
+              setShowTxModal(false);
+              window.location.reload();
+            }}
+          />
         )}
       </main>
     </div>

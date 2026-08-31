@@ -102,3 +102,44 @@ def get_fund_tracking_detail(scheme_code: str):
     if not result:
         raise HTTPException(status_code=404, detail="Historical fund data not found")
     return result
+
+class WatchlistAdd(BaseModel):
+    scheme_code: str
+
+@app.post("/api/tracker/watchlist")
+def add_to_watchlist(item: WatchlistAdd):
+    code = item.scheme_code.strip()
+    if code not in INACTIVE_WATCHLIST:
+        INACTIVE_WATCHLIST.append(code)
+    return {"message": "Success", "code": code}
+
+class TransactionCreate(BaseModel):
+    scheme_code: str
+    units: float
+    buy_price: float
+
+@app.post("/api/portfolio/transaction")
+def add_transaction(tx: TransactionCreate):
+    code = tx.scheme_code.strip()
+    
+    # Check if fund already exists in active holdings
+    existing = next((h for h in SAMPLE_HOLDINGS if h["scheme_code"] == code), None)
+    
+    if existing:
+        # Weighted average price recalculation
+        total_units = existing["units"] + tx.units
+        total_cost = (existing["units"] * existing["avg_buy_price"]) + (tx.units * tx.buy_price)
+        existing["units"] = round(total_units, 4)
+        existing["avg_buy_price"] = round(total_cost / total_units, 2)
+    else:
+        # Fetch scheme name via AMFI to register the new holding
+        nav_data = get_latest_nav(code)
+        scheme_name = nav_data["scheme_name"] if nav_data else f"Scheme {code}"
+        SAMPLE_HOLDINGS.append({
+            "scheme_code": code,
+            "scheme_name": scheme_name,
+            "units": tx.units,
+            "avg_buy_price": tx.buy_price
+        })
+
+    return {"message": "Transaction recorded successfully", "scheme_code": code}
