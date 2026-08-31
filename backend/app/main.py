@@ -1,12 +1,15 @@
-from fastapi import FastAPI
-from app.db.database import engine, Base
-from app.models import portfolio # Import models so SQLAlchemy knows they exist
-
-# Generate tables in MySQL if they don't exist
-Base.metadata.create_all(bind=engine)
+from fastapi import FastAPI, HTTPException
+from app.services.amfi_fetcher import get_latest_nav
 
 app = FastAPI(title="MyCAMS Clone API")
 
 @app.get("/")
 def read_root():
-    return {"message": "Mutual Fund Tracker API is running."}
+    return {"message": "API is running. Database is paused."}
+
+@app.get("/api/nav/{scheme_code}")
+def fetch_nav(scheme_code: str):
+    data = get_latest_nav(scheme_code)
+    if not data:
+        raise HTTPException(status_code=404, detail="Fund not found or AMFI is down")
+    return data
