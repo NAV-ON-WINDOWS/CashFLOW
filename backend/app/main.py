@@ -12,7 +12,11 @@ app = FastAPI(title="MyCAMS Clone API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], 
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://192.168.1.6:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,8 +46,9 @@ SAMPLE_PORTFOLIO = [
 
 # Inactive / Monitored Watchlist (Feature A)
 INACTIVE_WATCHLIST = [
-    "100033", # Aditya Birla Sun Life Frontline Equity Fund
-    "101010", # HDFC Top 100 Fund
+    "120716",  # UTI Nifty 50 Index Fund - Direct Growth
+    "118989",  # HDFC Mid-Cap Opportunities Fund - Direct Growth
+    "120503",  # Axis ELSS Tax Saver Direct Plan - Growth
 ]
 
 class HoldingInput(BaseModel):
