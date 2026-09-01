@@ -1,46 +1,66 @@
-# myCAMS Portfolio Monitor
+# 🔒 myCAMS Portfolio Monitor (Local-First & Privacy-Focused)
 
-A full-stack mutual fund portfolio tracker built to monitor active investments, visualize asset allocation, and track historical NAV performance. It fetches live, official daily valuations directly from the Association of Mutual Funds in India (AMFI) and provides a clean, responsive dashboard for personal wealth management.
+A self-hosted, privacy-centric mutual fund portfolio monitor and analytics dashboard. Built to run locally on your machine, ensuring **100% of your holdings, invested capital, and folio numbers remain completely private on your local storage** while automatically fetching official daily valuations directly from the Association of Mutual Funds in India (AMFI).
+
+---
+
+## ✨ Why Local-First?
+
+* **Absolute Privacy:** Your financial net worth and portfolio allocation never get uploaded to third-party cloud databases or commercial tracking servers.
+* **No Authentication Friction:** No sign-up walls, forgotten passwords, or expired session tokens. Open the dashboard and start tracking immediately.
+* **Zero Cloud Latency:** Sub-millisecond read/write speeds powered by an embedded local SQLite engine.
+* **Offline Resilient:** View past portfolio snapshots and historical analytics even when disconnected from the internet.
+
+---
 
 ## 🚀 Core Features
 
-* **Live AMFI Integration:** Automatically fetches the latest official end-of-day Net Asset Values (NAV) directly from the AMFI daily text feed.
-* **Automated Daily Sync:** An embedded `APScheduler` background job silently polls and caches the latest AMFI closing valuations every day at 11:05 PM IST.
-* **Active Portfolio Tracking & CRUD:** Dynamically calculates total invested capital, current net worth, and returns. Easily add, edit, or delete active mutual fund holdings.
-* **Watchlist Analytics:** Track inactive or prospective funds with automated 1-month, 6-month, 1-year, and all-time performance metrics.
-* **Interactive Visualizations (Recharts):** * **NAV History:** Chronologically sorted area charts for historical performance.
+* **Live AMFI Integration:** Automatically retrieves official end-of-day Net Asset Values (NAV) directly from the AMFI daily text feed.
+* **Automated Background Sync:** Embedded `APScheduler` CRON job silently polls and updates latest closing valuations daily at 11:05 PM IST.
+* **Active Portfolio Tracking & CRUD:** Manage mutual fund holdings with real-time calculations for invested capital, current net worth, and absolute/percentage returns.
+* **Watchlist Analytics:** Track prospective or benchmark funds with automated 1-month, 6-month, 1-year, and all-time performance metrics.
+* **Interactive Visualizations (Recharts):**
+  * **NAV History:** Chronologically sorted area charts visualizing long-term fund performance without rendering glitches.
   * **Asset Allocation:** Interactive donut chart displaying portfolio diversification and fund weight distributions.
-* **Multi-Format Statement Exports:** Generate clean, print-optimized PDF Consolidated Account Statements (CAS), or export raw data to Excel Workbooks (`.xlsx`) and CSVs directly from the client side.
-* **Zero-Config Persistence:** Utilizes an embedded SQLite database (`portfolio.db`) via SQLAlchemy to ensure data survives server restarts without complex database hosting.
-* **Production-Ready Containerization:** Multi-stage Docker builds and a unified `docker-compose.yml` for isolated, zero-configuration deployments.
+* **Multi-Format Statement Exports:** * Clean, print-optimized **PDF Consolidated Account Statements (CAS)**.
+  * Native client-side exports for **Excel Workbooks (`.xlsx`)** and raw **CSVs**.
+* **Zero-Config Local Persistence:** Utilizes an embedded SQLite database (`portfolio.db`) managed via SQLAlchemy.
+* **Containerized Deployment:** Multi-stage Docker build and unified `docker-compose.yml` for isolated single-command startup.
+
+---
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** Next.js (App Router), React, Tailwind CSS, Recharts, SheetJS (xlsx), Axios
+* **Frontend:** Next.js (App Router), React, Tailwind CSS, Recharts, SheetJS (`xlsx`), Axios
 * **Backend:** FastAPI, Python, Uvicorn, SQLAlchemy, APScheduler
 * **Database:** SQLite (Local file-based persistent storage)
-* **Deployment:** Docker, Docker Compose
+* **Packaging:** Docker, Docker Compose
 
-## 📦 Run Locally (Docker - Recommended)
+---
 
-The easiest way to spin up the entire application is using Docker. Ensure Docker Desktop is running on your machine.
+## 📦 Quick Start (Docker - Recommended)
+
+Run the entire application in isolated local containers:
 
 ```bash
-# Clone the repository and navigate to the project root
+# Clone the repository
 git clone <your-repo-url>
 cd mycams-clone
 
-# Build and start the containers
+# Build and start services
 docker compose up --build
 ```
+
 * **Frontend Dashboard:** `http://localhost:3000`
-* **Backend API & Swagger Docs:** `http://localhost:8000/docs`
+* **FastAPI Backend & Swagger API Docs:** `http://localhost:8000/docs`
 
-## 💻 Run Locally (Native OS)
+---
 
-If you prefer to run the native processes without Docker, open two separate terminals:
+## 💻 Local Development Setup (Native OS)
 
-### 1. Backend (FastAPI)
+If you prefer running the processes natively without Docker:
+
+### 1. Backend (FastAPI + SQLite)
 ```bash
 cd backend
 pip install -r requirements.txt
@@ -54,35 +74,38 @@ npm install
 npm run dev
 ```
 
+---
+
 ## 📂 Project Structure
 
 ```text
 mycams-clone/
-├── docker-compose.yml              # Multi-container orchestration
+├── docker-compose.yml              # Local multi-container orchestration
 ├── backend/
-│   ├── Dockerfile                  # Python 3.11-slim backend image
+│   ├── Dockerfile                  # Python 3.11-slim container spec
 │   ├── requirements.txt            # Python dependencies
 │   ├── app/
-│   │   ├── main.py                 # FastAPI application, endpoints, and lifecycle
-│   │   ├── database.py             # SQLAlchemy engine and SQLite connection
+│   │   ├── main.py                 # FastAPI endpoints, CORS, & app lifespan
+│   │   ├── database.py             # SQLAlchemy local SQLite connection
 │   │   ├── models.py               # Database schemas (Holdings & Watchlist)
 │   │   └── services/
 │   │       ├── amfi_fetcher.py     # Live NAV extraction from AMFI feed
-│   │       ├── historical_tracker.py # Historical performance calculations
-│   │       └── scheduler.py        # APScheduler CRON jobs (Daily AMFI sync)
+│   │       ├── historical_tracker.py # Historical returns calculations
+│   │       └── scheduler.py        # Daily background AMFI sync worker
 ├── frontend/
-│   ├── Dockerfile                  # Node 20 multi-stage frontend image
+│   ├── Dockerfile                  # Next.js multi-stage production build
 │   ├── package.json
 │   ├── app/
 │   │   ├── page.tsx                # Main dashboard UI, metrics, and export logic
-│   │   └── globals.css             # Tailwind imports and PDF print styles
+│   │   └── globals.css             # Tailwind styling & print/PDF rules
 │   ├── components/                 # Modals & Charts (AllocationChart, NavChart, etc.)
 │   └── lib/
-│       ├── api.ts                  # Axios instance and API typings
-│       └── exportUtils.ts          # SheetJS Excel/CSV export logic
+│       ├── api.ts                  # Axios client configuration
+│       └── exportUtils.ts          # SheetJS Excel/CSV client export handlers
 ```
 
-## 🛣️ Future Enhancements
-* **User Authentication:** Add NextAuth/JWT to support multiple users with private portfolios.
-* **CI/CD Pipeline:** Implement GitHub Actions to automate linting, testing, and Docker image builds on push.
-* **XIRR Calculations:** Add extended internal rate of return metrics for SIP-based transaction histories.
+---
+
+## 🛣️ Roadmap
+* **Extended SIP Analytics:** Add XIRR (Extended Internal Rate of Return) calculations for periodic SIP transactions.
+* **Automated Data Backup:** Local JSON/SQLite export & import mechanism to easily transfer portfolio data across machines.
