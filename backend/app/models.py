@@ -19,3 +19,15 @@ class WatchlistItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     scheme_code = Column(String, unique=True, index=True)
+
+class InactiveHolding(Base):
+    __tablename__ = "inactive_holdings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scheme_code = Column(String, index=True)
+    scheme_name = Column(String)
+    units = Column(Float)
+    avg_buy_price = Column(Float)
+    sell_price = Column(Float)
+    realized_profit = Column(Float)
+    sell_date = Column(String, nullable=True)

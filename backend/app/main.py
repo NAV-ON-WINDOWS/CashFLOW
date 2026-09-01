@@ -206,3 +206,33 @@ def get_fund_details(scheme_code: str):
     if not data:
         raise HTTPException(status_code=404, detail="Scheme details not found")
     return data
+
+class InactiveHoldingSchema(BaseModel):
+    scheme_code: str
+    scheme_name: str
+    units: float
+    avg_buy_price: float
+    sell_price: float
+    sell_date: str | None = None
+
+@app.get("/api/inactive-portfolio")
+def get_inactive_portfolio(db: Session = Depends(get_db)):
+    return db.query(models.InactiveHolding).all()
+
+@app.post("/api/inactive-portfolio")
+def add_inactive_holding(holding: InactiveHoldingSchema, db: Session = Depends(get_db)):
+    realized_profit = (holding.sell_price - holding.avg_buy_price) * holding.units
+    new_inactive = models.InactiveHolding(
+        **holding.dict(),
+        realized_profit=realized_profit
+    )
+    db.add(new_inactive)
+    db.commit()
+    db.refresh(new_inactive)
+    return new_inactive
+
+@app.delete("/api/inactive-portfolio/{holding_id}")
+def delete_inactive_holding(holding_id: int, db: Session = Depends(get_db)):
+    db.query(models.InactiveHolding).filter(models.InactiveHolding.id == holding_id).delete()
+    db.commit()
+    return {"status": "deleted"}
