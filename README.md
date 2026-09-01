@@ -44,7 +44,7 @@ Run the entire application in isolated local containers:
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/NAV-ON-WINDOWS/mycams-clone
 cd mycams-clone
 
 # Build and start services
