@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -6,13 +7,22 @@ from sqlalchemy.orm import Session
 
 from app.services.amfi_fetcher import get_latest_nav
 from app.services.historical_tracker import calculate_performance_metrics
+from app.services.scheduler import start_scheduler, stop_scheduler, sync_active_navs
 from app.database import engine, get_db
 from app import models
 
-# Tell SQLAlchemy to create the database file and tables if they don't exist yet!
+# Ensure tables exist
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="myCAMS Portfolio Monitor API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start APScheduler
+    start_scheduler()
+    yield
+    # Shutdown: Stop APScheduler
+    stop_scheduler()
+
+app = FastAPI(title="myCAMS Portfolio Monitor API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,7 +53,14 @@ class WatchlistAdd(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"status": "healthy", "message": "API is running with SQLite!"}
+    return {"status": "healthy", "message": "API is running with SQLite & APScheduler!"}
+
+
+# --- MANUAL SYNC TRIGGER ---
+@app.post("/api/portfolio/sync-now")
+def trigger_manual_sync():
+    sync_active_navs()
+    return {"status": "success", "message": "Manual NAV sync completed."}
 
 
 # --- PORTFOLIO ENDPOINTS ---
@@ -53,7 +70,6 @@ def get_portfolio(db: Session = Depends(get_db)):
     total_current_value = 0.0
     enriched_holdings = []
 
-    # Read from the database instead of the in-memory list
     holdings = db.query(models.Holding).all()
 
     for item in holdings:
@@ -103,7 +119,6 @@ def get_portfolio(db: Session = Depends(get_db)):
 
 @app.post("/api/portfolio/transaction")
 def add_active_fund(fund: ActiveFundCreate, db: Session = Depends(get_db)):
-    # Generate custom code if none provided
     if fund.scheme_code:
         code = fund.scheme_code.strip()
     else:
@@ -113,7 +128,6 @@ def add_active_fund(fund: ActiveFundCreate, db: Session = Depends(get_db)):
     existing = db.query(models.Holding).filter(models.Holding.scheme_code == code).first()
 
     if existing:
-        # Update existing record
         total_units = existing.units + fund.units
         total_cost = (existing.units * existing.avg_buy_price) + (fund.units * fund.avg_buy_price)
         existing.units = round(total_units, 4)
@@ -121,7 +135,6 @@ def add_active_fund(fund: ActiveFundCreate, db: Session = Depends(get_db)):
         if fund.folio_number:
             existing.folio_number = fund.folio_number
     else:
-        # Create brand new record
         new_holding = models.Holding(
             scheme_code=code,
             scheme_name=fund.scheme_name.strip(),
@@ -132,7 +145,6 @@ def add_active_fund(fund: ActiveFundCreate, db: Session = Depends(get_db)):
         )
         db.add(new_holding)
     
-    # Save the changes to the notebook!
     db.commit()
     return {"message": "Fund saved to database", "scheme_code": code}
 
