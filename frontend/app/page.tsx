@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import AddWatchlistModal from '../components/AddWatchlistModal';
 import AddTransactionModal from '../components/AddTransactionModal';
+import AddInactiveModal from '../components/AddInactiveModal';
 import EditFundModal from '../components/EditFundModal';
 import NavChartModal from '../components/NavChartModal';
 import AllocationChart from '../components/AllocationChart';
@@ -19,6 +20,7 @@ import { exportToExcel, exportToCSV } from '../lib/exportUtils';
 export default function Home() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTxModal, setShowTxModal] = useState(false);
+  const [showAddInactiveModal, setShowAddInactiveModal] = useState(false);
   const [editingFund, setEditingFund] = useState<any | null>(null);
   const [mounted, setMounted] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioResponse | null>(null);
@@ -103,6 +105,7 @@ export default function Home() {
         </div>
 
         <div className="flex items-center space-x-3">
+          {/* Export Dropdown */}
           <div className="relative no-print" ref={dropdownRef}>
             <button
               onClick={() => setShowExportDropdown(!showExportDropdown)}
@@ -153,32 +156,41 @@ export default function Home() {
             )}
           </div>
 
-          <div className="no-print flex space-x-2 bg-slate-100 p-1 rounded-lg">
+          {/* Active / Inactive Grouped Segmented Slider */}
+          <div className="no-print flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
             <button
               onClick={() => setActiveTab('portfolio')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
-                activeTab === 'portfolio' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                activeTab === 'portfolio'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               Active Portfolio
             </button>
             <button
-              onClick={() => setActiveTab('watchlist')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
-                activeTab === 'watchlist' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Tracked Watchlist
-            </button>
-            <button
               onClick={() => setActiveTab('inactive')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
-                activeTab === 'inactive' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                activeTab === 'inactive'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               Inactive / Realized
             </button>
           </div>
+
+          {/* Separate Tracked Watchlist Button */}
+          <button
+            onClick={() => setActiveTab('watchlist')}
+            className={`no-print px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-200 ${
+              activeTab === 'watchlist'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            Tracked Watchlist
+          </button>
         </div>
       </header>
 
@@ -315,7 +327,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* WATCHLIST TAB */}
+        {/* TRACKED WATCHLIST TAB */}
         {activeTab === 'watchlist' && (
           <div>
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -409,13 +421,25 @@ export default function Home() {
                   <h2 className="text-base font-semibold text-slate-800">Inactive / Sold Holdings</h2>
                   <p className="text-xs text-slate-500">Historical realized gain/loss records</p>
                 </div>
+                <button
+                  onClick={() => setShowAddInactiveModal(true)}
+                  className="no-print bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-slate-700 transition"
+                >
+                  + Add Sold Fund
+                </button>
               </div>
 
               <div className="overflow-x-auto">
                 {inactiveHoldings.length === 0 ? (
                   <div className="p-12 text-center">
                     <h3 className="text-sm font-semibold text-slate-800">No closed positions yet</h3>
-                    <p className="text-xs text-slate-500 mt-1">Sold funds and realized returns will appear here.</p>
+                    <p className="text-xs text-slate-500 mt-1 mb-4">Sold funds and realized returns will appear here.</p>
+                    <button
+                      onClick={() => setShowAddInactiveModal(true)}
+                      className="no-print bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-slate-700 transition"
+                    >
+                      + Add Your First Sold Fund
+                    </button>
                   </div>
                 ) : (
                   <table className="w-full text-left text-sm text-slate-600">
@@ -484,6 +508,16 @@ export default function Home() {
             onClose={() => setShowTxModal(false)}
             onSuccess={() => {
               setShowTxModal(false);
+              loadData();
+            }}
+          />
+        )}
+
+        {showAddInactiveModal && (
+          <AddInactiveModal
+            onClose={() => setShowAddInactiveModal(false)}
+            onSuccess={() => {
+              setShowAddInactiveModal(false);
               loadData();
             }}
           />

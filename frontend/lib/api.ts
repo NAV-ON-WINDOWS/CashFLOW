@@ -63,8 +63,8 @@ export const fetchFundDetail = async (schemeCode: string) => {
   return res.data;
 };
 
-export const getInactiveHoldings = () => api.get('/api/inactive-portfolio');
-export const addInactiveHolding = (data: any) => api.post('/api/inactive-portfolio', data);
-export const deleteInactiveHolding = (id: number) => api.delete(`/api/inactive-portfolio/${id}`);
+export const getInactiveHoldings = () => api.get('/inactive-portfolio');
+export const addInactiveHolding = (data: any) => api.post('/inactive-portfolio', data);
+export const deleteInactiveHolding = (id: number) => api.delete(`/inactive-portfolio/${id}`);
 
 export default api;
