@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import AddWatchlistModal from '../components/AddWatchlistModal';
 import AddTransactionModal from '../components/AddTransactionModal';
 import EditFundModal from '../components/EditFundModal';
 import NavChartModal from '../components/NavChartModal';
+import AllocationChart from '../components/AllocationChart';
 import api, { fetchPortfolio, fetchWatchlist, PortfolioResponse, WatchlistFund } from '../lib/api';
+import { exportToExcel, exportToCSV } from '../lib/exportUtils';
 
 export default function Home() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -17,6 +19,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'portfolio' | 'watchlist'>('portfolio');
   const [selectedScheme, setSelectedScheme] = useState<string | null>(null);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {
     try {
@@ -36,6 +40,14 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     loadData();
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowExportDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleDelete = async (schemeCode: string, fundName: string, e: React.MouseEvent) => {
@@ -69,15 +81,55 @@ export default function Home() {
         </div>
 
         <div className="flex items-center space-x-3">
-          <button
-            onClick={() => window.print()}
-            className="no-print inline-flex items-center space-x-1.5 bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition shadow-sm"
-          >
-            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            <span>Export PDF</span>
-          </button>
+          <div className="relative no-print" ref={dropdownRef}>
+            <button
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              className="inline-flex items-center space-x-1.5 bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition shadow-sm"
+            >
+              <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>Export</span>
+              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showExportDropdown && portfolio && (
+              <div className="absolute right-0 mt-2 w-44 rounded-lg bg-white border border-slate-100 shadow-xl py-1 z-50 text-xs text-slate-700">
+                <button
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    window.print();
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2"
+                >
+                  <span>📄</span>
+                  <span>Print / PDF Document</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    exportToExcel(portfolio.holdings, portfolio.summary);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2"
+                >
+                  <span>📊</span>
+                  <span>Excel Workbook (.xlsx)</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    exportToCSV(portfolio.holdings);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2"
+                >
+                  <span>📑</span>
+                  <span>Raw CSV (.csv)</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="no-print flex space-x-2 bg-slate-100 p-1 rounded-lg">
             <button
@@ -132,6 +184,12 @@ export default function Home() {
                 </p>
               </div>
             </div>
+
+            {/* Asset Allocation Donut Chart */}
+            <AllocationChart
+              holdings={portfolio.holdings}
+              totalValue={portfolio.summary.total_current_value}
+            />
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">

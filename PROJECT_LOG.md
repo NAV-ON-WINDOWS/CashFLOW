@@ -14,3 +14,4 @@
 - [13] Built full CRUD capabilities (Edit/Delete) for active holdings with real-time UI updates.
 - [14] Fixed Axios instance exports and integrated empty-state UI for new portfolios.
 - [15] Added export to PDF button
+- [16] Added export to feature
