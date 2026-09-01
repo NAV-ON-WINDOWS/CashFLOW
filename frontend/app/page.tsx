@@ -6,7 +6,14 @@ import AddTransactionModal from '../components/AddTransactionModal';
 import EditFundModal from '../components/EditFundModal';
 import NavChartModal from '../components/NavChartModal';
 import AllocationChart from '../components/AllocationChart';
-import api, { fetchPortfolio, fetchWatchlist, PortfolioResponse, WatchlistFund } from '../lib/api';
+import api, { 
+  fetchPortfolio, 
+  fetchWatchlist, 
+  getInactiveHoldings, 
+  deleteInactiveHolding, 
+  PortfolioResponse, 
+  WatchlistFund 
+} from '../lib/api';
 import { exportToExcel, exportToCSV } from '../lib/exportUtils';
 
 export default function Home() {
@@ -16,20 +23,23 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioResponse | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistFund[]>([]);
+  const [inactiveHoldings, setInactiveHoldings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'portfolio' | 'watchlist'>('portfolio');
+  const [activeTab, setActiveTab] = useState<'portfolio' | 'watchlist' | 'inactive'>('portfolio');
   const [selectedScheme, setSelectedScheme] = useState<string | null>(null);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {
     try {
-      const [pData, wData] = await Promise.all([
+      const [pData, wData, iData] = await Promise.all([
         fetchPortfolio(),
-        fetchWatchlist()
+        fetchWatchlist(),
+        getInactiveHoldings()
       ]);
       setPortfolio(pData);
       setWatchlist(wData);
+      setInactiveHoldings(iData.data || []);
     } catch (err: any) {
       console.error('Error fetching data:', err);
     } finally {
@@ -61,6 +71,18 @@ export default function Home() {
       alert(`Delete failed: ${err.message}`);
     }
   };
+
+  const handleDeleteInactive = async (id: number, fundName: string) => {
+    if (!confirm(`Remove "${fundName}" from inactive records?`)) return;
+    try {
+      await deleteInactiveHolding(id);
+      await loadData();
+    } catch (err: any) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
+  const totalRealizedProfit = inactiveHoldings.reduce((acc, item) => acc + (item.realized_profit || 0), 0);
 
   if (!mounted || loading) {
     return (
@@ -148,11 +170,20 @@ export default function Home() {
             >
               Tracked Watchlist
             </button>
+            <button
+              onClick={() => setActiveTab('inactive')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
+                activeTab === 'inactive' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Inactive / Realized
+            </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto p-8">
+        {/* ACTIVE PORTFOLIO TAB */}
         {activeTab === 'portfolio' && portfolio && (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -284,12 +315,13 @@ export default function Home() {
           </div>
         )}
 
+        {/* WATCHLIST TAB */}
         {activeTab === 'watchlist' && (
           <div>
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-800">Monitored / Inactive Funds</h2>
+                  <h2 className="text-base font-semibold text-slate-800">Tracked Watchlist</h2>
                   <p className="text-xs text-slate-500">Historical performance metrics • Click any row to view chart</p>
                 </div>
                 <button 
@@ -347,6 +379,86 @@ export default function Home() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* INACTIVE / REALIZED TAB */}
+        {activeTab === 'inactive' && (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Realized Profit / Loss</span>
+                <p className={`text-2xl font-bold mt-1 ${totalRealizedProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {totalRealizedProfit >= 0 ? '+' : ''}₹{totalRealizedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Closed Positions Count</span>
+                <p className="text-2xl font-bold mt-1 text-slate-800">
+                  {inactiveHoldings.length} Funds
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-800">Inactive / Sold Holdings</h2>
+                  <p className="text-xs text-slate-500">Historical realized gain/loss records</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                {inactiveHoldings.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <h3 className="text-sm font-semibold text-slate-800">No closed positions yet</h3>
+                    <p className="text-xs text-slate-500 mt-1">Sold funds and realized returns will appear here.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-200">
+                      <tr>
+                        <th className="px-6 py-3">Fund Name</th>
+                        <th className="px-6 py-3 text-right">Units Redeemed</th>
+                        <th className="px-6 py-3 text-right">Buy Price</th>
+                        <th className="px-6 py-3 text-right">Sell Price</th>
+                        <th className="px-6 py-3 text-right">Realized P&L</th>
+                        <th className="px-6 py-3 text-center no-print">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {inactiveHoldings.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50 transition">
+                          <td className="px-6 py-4 font-medium text-slate-900">
+                            <div>{item.scheme_name}</div>
+                            <span className="text-xs text-slate-400 font-mono">Code: {item.scheme_code} {item.sell_date ? `• Sold on ${item.sell_date}` : ''}</span>
+                          </td>
+                          <td className="px-6 py-4 text-right font-mono">{item.units}</td>
+                          <td className="px-6 py-4 text-right font-mono">₹{item.avg_buy_price?.toFixed(2)}</td>
+                          <td className="px-6 py-4 text-right font-mono">₹{item.sell_price?.toFixed(2)}</td>
+                          <td className="px-6 py-4 text-right">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                              item.realized_profit >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                            }`}>
+                              {item.realized_profit >= 0 ? '+' : ''}₹{item.realized_profit?.toFixed(2)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center no-print">
+                            <button
+                              onClick={() => handleDeleteInactive(item.id, item.scheme_name)}
+                              className="px-2.5 py-1 text-xs font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>
