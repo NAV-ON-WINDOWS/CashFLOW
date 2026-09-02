@@ -60,6 +60,15 @@ class InactiveHoldingSchema(BaseModel):
     purchase_date: Optional[str] = None
     sell_date: Optional[str] = None
 
+class InactiveHoldingUpdate(BaseModel):
+    scheme_name: str
+    units: float
+    avg_buy_price: float
+    sell_price: float
+    folio_number: Optional[str] = "FOLIO-DEFAULT"
+    purchase_date: Optional[str] = None
+    sell_date: Optional[str] = None
+
 
 @app.get("/")
 def read_root():
@@ -218,10 +227,60 @@ def get_fund_details(scheme_code: str):
     return data
 
 
-# --- INACTIVE PORTFOLIO ENDPOINTS ---
+# --- INACTIVE (DORMANT) PORTFOLIO ENDPOINTS ---
 @app.get("/api/inactive-portfolio")
 def get_inactive_portfolio(db: Session = Depends(get_db)):
-    return db.query(models.InactiveHolding).all()
+    total_invested = 0.0
+    total_current_value = 0.0
+    enriched_holdings = []
+
+    holdings = db.query(models.InactiveHolding).all()
+
+    for item in holdings:
+        code = item.scheme_code
+        units = item.units
+        avg_price = item.avg_buy_price or 0
+        invested_amt = units * avg_price
+        total_invested += invested_amt
+
+        # Fetch Live NAV dynamically
+        nav_info = get_latest_nav(code) if code and not code.startswith("SOLD_") else None
+        
+        current_nav = nav_info["nav"] if (nav_info and nav_info.get("nav", 0) > 0) else avg_price
+        nav_date = nav_info["date"] if nav_info else (item.purchase_date or "N/A")
+        scheme_name = nav_info["scheme_name"] if nav_info else item.scheme_name
+
+        current_val = units * current_nav
+        total_current_value += current_val
+        pnl = current_val - invested_amt
+        returns_pct = round((pnl / invested_amt) * 100, 2) if invested_amt > 0 else 0.0
+
+        enriched_holdings.append({
+            "id": item.id,
+            "scheme_code": code,
+            "scheme_name": scheme_name,
+            "units": units,
+            "avg_buy_price": avg_price,
+            "current_nav": current_nav,
+            "current_value": round(current_val, 2),
+            "profit_loss": round(pnl, 2),
+            "returns_percentage": returns_pct,
+            "nav_date": nav_date,
+            "folio_number": item.folio_number
+        })
+
+    total_profit_loss = total_current_value - total_invested
+    overall_return = round((total_profit_loss / total_invested) * 100, 2) if total_invested > 0 else 0.0
+
+    return {
+        "summary": {
+            "total_invested": round(total_invested, 2),
+            "total_current_value": round(total_current_value, 2),
+            "total_profit_loss": round(total_profit_loss, 2),
+            "overall_return_percentage": overall_return,
+        },
+        "holdings": enriched_holdings
+    }
 
 
 @app.post("/api/inactive-portfolio")
@@ -251,21 +310,6 @@ def add_inactive_holding(holding: InactiveHoldingSchema, db: Session = Depends(g
     return new_inactive
 
 
-@app.delete("/api/inactive-portfolio/{holding_id}")
-def delete_inactive_holding(holding_id: int, db: Session = Depends(get_db)):
-    db.query(models.InactiveHolding).filter(models.InactiveHolding.id == holding_id).delete()
-    db.commit()
-    return {"status": "deleted"}
-
-class InactiveHoldingUpdate(BaseModel):
-    scheme_name: str
-    units: float
-    avg_buy_price: float
-    sell_price: float
-    folio_number: Optional[str] = "FOLIO-DEFAULT"
-    purchase_date: Optional[str] = None
-    sell_date: Optional[str] = None
-
 @app.put("/api/inactive-portfolio/{holding_id}")
 def update_inactive_holding(holding_id: int, payload: InactiveHoldingUpdate, db: Session = Depends(get_db)):
     existing = db.query(models.InactiveHolding).filter(models.InactiveHolding.id == holding_id).first()
@@ -283,3 +327,10 @@ def update_inactive_holding(holding_id: int, payload: InactiveHoldingUpdate, db:
 
     db.commit()
     return {"message": "Inactive fund updated successfully"}
+
+
+@app.delete("/api/inactive-portfolio/{holding_id}")
+def delete_inactive_holding(holding_id: int, db: Session = Depends(get_db)):
+    db.query(models.InactiveHolding).filter(models.InactiveHolding.id == holding_id).delete()
+    db.commit()
+    return {"status": "deleted"}
