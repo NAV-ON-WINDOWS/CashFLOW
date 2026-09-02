@@ -70,4 +70,9 @@ export const deleteInactiveHolding = (id: number) => api.delete(`/inactive-portf
 export const updateInactiveHolding = (id: number, data: any) => 
   api.put(`/inactive-portfolio/${id}`, data);
 
+export const getInactiveHoldings = async (): Promise<PortfolioResponse> => {
+  const res = await api.get('/inactive-portfolio');
+  return res.data;
+};
+
 export default api;
