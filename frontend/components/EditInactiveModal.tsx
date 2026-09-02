@@ -1,22 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import api from '../lib/api';
+import { updateInactiveHolding } from '../lib/api';
 
-interface AddTransactionModalProps {
+interface EditInactiveModalProps {
+  holding: any;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function AddTransactionModal({ onClose, onSuccess }: AddTransactionModalProps) {
+export default function EditInactiveModal({ holding, onClose, onSuccess }: EditInactiveModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    scheme_name: '',
-    scheme_code: '',
-    folio_number: '',
-    units: '',
-    invested_amount: '',
-    purchase_date: new Date().toISOString().split('T')[0],
+    scheme_name: holding.scheme_name || '',
+    folio_number: holding.folio_number || '',
+    units: holding.units?.toString() || '',
+    total_purchase_price: (holding.units * (holding.avg_buy_price || 0)).toFixed(2),
+    total_selling_price: (holding.units * (holding.sell_price || 0)).toFixed(2),
+    purchase_date: holding.purchase_date || '',
+    sell_date: holding.sell_date || '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,21 +26,25 @@ export default function AddTransactionModal({ onClose, onSuccess }: AddTransacti
     setLoading(true);
 
     const units = parseFloat(formData.units);
-    const investedAmount = parseFloat(formData.invested_amount);
-    const avgBuyPrice = units > 0 ? investedAmount / units : 0;
+    const totalPurchasePrice = parseFloat(formData.total_purchase_price);
+    const totalSellingPrice = parseFloat(formData.total_selling_price);
+
+    const avgBuyPrice = units > 0 ? totalPurchasePrice / units : 0;
+    const sellPricePerUnit = units > 0 ? totalSellingPrice / units : 0;
 
     try {
-      await api.post('/portfolio/transaction', {
+      await updateInactiveHolding(holding.id, {
         scheme_name: formData.scheme_name,
-        scheme_code: formData.scheme_code || undefined,
         folio_number: formData.folio_number || 'FOLIO-DEFAULT',
         units: units,
         avg_buy_price: avgBuyPrice,
+        sell_price: sellPricePerUnit,
         purchase_date: formData.purchase_date || undefined,
+        sell_date: formData.sell_date || undefined,
       });
       onSuccess();
     } catch (err: any) {
-      alert(`Error saving fund: ${err.message}`);
+      alert(`Error updating inactive fund: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -49,8 +55,8 @@ export default function AddTransactionModal({ onClose, onSuccess }: AddTransacti
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Add Active Mutual Fund</h2>
-            <p className="text-xs text-slate-500">Record a new holding with full folio and purchase details.</p>
+            <h2 className="text-lg font-bold text-slate-800">Edit Sold / Inactive Fund</h2>
+            <p className="text-xs text-slate-500">Update redeemed mutual fund details</p>
           </div>
           <button 
             type="button"
@@ -64,57 +70,39 @@ export default function AddTransactionModal({ onClose, onSuccess }: AddTransacti
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-              Mutual Fund Scheme Name *
+              Fund / Scheme Name *
             </label>
             <input
               required
               type="text"
-              placeholder="e.g. Parag Parikh Flexi Cap Fund - Direct Plan - Growth"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.scheme_name}
               onChange={(e) => setFormData({ ...formData, scheme_name: e.target.value })}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                AMFI Scheme Code (Optional)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. 122639"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={formData.scheme_code}
-                onChange={(e) => setFormData({ ...formData, scheme_code: e.target.value })}
-              />
-              <span className="text-[10px] text-slate-400 mt-1 block">Used for live AMFI daily NAV sync.</span>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                Folio Number (Optional)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. 910245678/12"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={formData.folio_number}
-                onChange={(e) => setFormData({ ...formData, folio_number: e.target.value })}
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+              Folio Number (Optional)
+            </label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={formData.folio_number}
+              onChange={(e) => setFormData({ ...formData, folio_number: e.target.value })}
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                Units Held *
+                Units Sold *
               </label>
               <input
                 required
                 type="number"
                 step="0.001"
                 min="0"
-                placeholder="e.g. 150.45"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.units}
                 onChange={(e) => setFormData({ ...formData, units: e.target.value })}
@@ -122,28 +110,55 @@ export default function AddTransactionModal({ onClose, onSuccess }: AddTransacti
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                Invested Amount (₹) *
+                Total Buy Price (₹) *
               </label>
               <input
                 required
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="e.g. 50000"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={formData.invested_amount}
-                onChange={(e) => setFormData({ ...formData, invested_amount: e.target.value })}
+                value={formData.total_purchase_price}
+                onChange={(e) => setFormData({ ...formData, total_purchase_price: e.target.value })}
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                Purchase Date
+                Total Sell Price (₹) *
+              </label>
+              <input
+                required
+                type="number"
+                step="0.01"
+                min="0"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.total_selling_price}
+                onChange={(e) => setFormData({ ...formData, total_selling_price: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+                Purchase Date (Optional)
               </label>
               <input
                 type="date"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.purchase_date}
                 onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+                Sell Date (Optional)
+              </label>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.sell_date}
+                onChange={(e) => setFormData({ ...formData, sell_date: e.target.value })}
               />
             </div>
           </div>
@@ -161,7 +176,7 @@ export default function AddTransactionModal({ onClose, onSuccess }: AddTransacti
               disabled={loading}
               className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50"
             >
-              {loading ? 'Saving...' : 'Add Fund to Portfolio'}
+              {loading ? 'Saving...' : 'Update Record'}
             </button>
           </div>
         </form>

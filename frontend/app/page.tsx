@@ -5,8 +5,10 @@ import AddWatchlistModal from '../components/AddWatchlistModal';
 import AddTransactionModal from '../components/AddTransactionModal';
 import AddInactiveModal from '../components/AddInactiveModal';
 import EditFundModal from '../components/EditFundModal';
+import EditInactiveModal from '../components/EditInactiveModal';
 import NavChartModal from '../components/NavChartModal';
 import AllocationChart from '../components/AllocationChart';
+import RealizedChart from '../components/RealizedChart';
 import api, { 
   fetchPortfolio, 
   fetchWatchlist, 
@@ -22,6 +24,7 @@ export default function Home() {
   const [showTxModal, setShowTxModal] = useState(false);
   const [showAddInactiveModal, setShowAddInactiveModal] = useState(false);
   const [editingFund, setEditingFund] = useState<any | null>(null);
+  const [editingInactiveFund, setEditingInactiveFund] = useState<any | null>(null);
   const [mounted, setMounted] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioResponse | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistFund[]>([]);
@@ -84,7 +87,19 @@ export default function Home() {
     }
   };
 
-  const totalRealizedProfit = inactiveHoldings.reduce((acc, item) => acc + (item.realized_profit || 0), 0);
+  // Inactive Portfolio Financial Aggregations
+  const totalInactiveInvested = inactiveHoldings.reduce(
+    (acc, item) => acc + (item.units * (item.avg_buy_price || 0)), 
+    0
+  );
+  const totalInactiveRedeemed = inactiveHoldings.reduce(
+    (acc, item) => acc + (item.units * (item.sell_price || 0)), 
+    0
+  );
+  const totalRealizedProfit = totalInactiveRedeemed - totalInactiveInvested;
+  const overallRealizedReturnPct = totalInactiveInvested > 0 
+    ? ((totalRealizedProfit / totalInactiveInvested) * 100).toFixed(2) 
+    : '0.00';
 
   if (!mounted || loading) {
     return (
@@ -269,7 +284,7 @@ export default function Home() {
                       <tr>
                         <th className="px-6 py-3">Fund Name</th>
                         <th className="px-6 py-3 text-right">Units Held</th>
-                        <th className="px-6 py-3 text-right">Avg Price</th>
+                        <th className="px-6 py-3 text-right">Invested Amount</th>
                         <th className="px-6 py-3 text-right">Latest NAV</th>
                         <th className="px-6 py-3 text-right">Current Value</th>
                         <th className="px-6 py-3 text-right">Gain / Loss</th>
@@ -277,48 +292,54 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {portfolio.holdings.map((fund) => (
-                        <tr
-                          key={fund.scheme_code}
-                          onClick={() => setSelectedScheme(fund.scheme_code)}
-                          className="hover:bg-blue-50/40 cursor-pointer transition"
-                        >
-                          <td className="px-6 py-4 font-medium text-slate-900">
-                            <div>{fund.scheme_name}</div>
-                            <span className="text-xs text-slate-400 font-mono">Code: {fund.scheme_code} • {fund.nav_date}</span>
-                          </td>
-                          <td className="px-6 py-4 text-right font-mono">{fund.units}</td>
-                          <td className="px-6 py-4 text-right font-mono">₹{fund.avg_buy_price.toFixed(2)}</td>
-                          <td className="px-6 py-4 text-right font-mono font-medium text-slate-800">₹{fund.current_nav.toFixed(2)}</td>
-                          <td className="px-6 py-4 text-right font-mono font-semibold text-slate-900">₹{fund.current_value.toLocaleString('en-IN')}</td>
-                          <td className="px-6 py-4 text-right">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-                              fund.profit_loss >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                            }`}>
-                              {fund.profit_loss >= 0 ? '+' : ''}₹{fund.profit_loss.toFixed(2)} ({fund.returns_percentage}%)
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-center no-print">
-                            <div className="flex items-center justify-center space-x-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingFund(fund);
-                                }}
-                                className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded transition"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={(e) => handleDelete(fund.scheme_code, fund.scheme_name, e)}
-                                className="px-2.5 py-1 text-xs font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {portfolio.holdings.map((fund) => {
+                        const investedAmount = fund.units * fund.avg_buy_price;
+                        return (
+                          <tr
+                            key={fund.scheme_code}
+                            onClick={() => setSelectedScheme(fund.scheme_code)}
+                            className="hover:bg-blue-50/40 cursor-pointer transition"
+                          >
+                            <td className="px-6 py-4 font-medium text-slate-900">
+                              <div>{fund.scheme_name}</div>
+                              <span className="text-xs text-slate-400 font-mono">Code: {fund.scheme_code} • {fund.nav_date}</span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-mono">{fund.units}</td>
+                            <td className="px-6 py-4 text-right font-mono">
+                              <div className="font-semibold text-slate-900">₹{investedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              <span className="text-xs text-slate-400">@ ₹{fund.avg_buy_price.toFixed(2)}/u</span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-mono font-medium text-slate-800">₹{fund.current_nav.toFixed(2)}</td>
+                            <td className="px-6 py-4 text-right font-mono font-semibold text-slate-900">₹{fund.current_value.toLocaleString('en-IN')}</td>
+                            <td className="px-6 py-4 text-right">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                                fund.profit_loss >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                              }`}>
+                                {fund.profit_loss >= 0 ? '+' : ''}₹{fund.profit_loss.toFixed(2)} ({fund.returns_percentage}%)
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-center no-print">
+                              <div className="flex items-center justify-center space-x-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingFund(fund);
+                                  }}
+                                  className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded transition"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => handleDelete(fund.scheme_code, fund.scheme_name, e)}
+                                  className="px-2.5 py-1 text-xs font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -396,29 +417,47 @@ export default function Home() {
           </div>
         )}
 
-        {/* INACTIVE / REALIZED TAB */}
+        {/* INACTIVE / REALIZED TAB (DASHBOARD) */}
         {activeTab === 'inactive' && (
           <div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {/* 4-Card Performance Metric Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Realized Profit / Loss</span>
-                <p className={`text-2xl font-bold mt-1 ${totalRealizedProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {totalRealizedProfit >= 0 ? '+' : ''}₹{totalRealizedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Capital Invested</span>
+                <p className="text-2xl font-bold mt-1 text-slate-800">
+                  ₹{totalInactiveInvested.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
 
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Closed Positions Count</span>
-                <p className="text-2xl font-bold mt-1 text-slate-800">
-                  {inactiveHoldings.length} Funds
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Redeemed Value</span>
+                <p className="text-2xl font-bold mt-1 text-blue-600">
+                  ₹{totalInactiveRedeemed.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Realized Net P&L</span>
+                <p className={`text-2xl font-bold mt-1 ${totalRealizedProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {totalRealizedProfit >= 0 ? '+' : ''}₹{totalRealizedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Overall Realized Return</span>
+                <p className={`text-2xl font-bold mt-1 ${parseFloat(overallRealizedReturnPct) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {parseFloat(overallRealizedReturnPct) >= 0 ? '+' : ''}{overallRealizedReturnPct}%
                 </p>
               </div>
             </div>
 
+            {/* Realized Profit/Loss Chart */}
+            <RealizedChart holdings={inactiveHoldings} />
+
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-800">Inactive / Sold Holdings</h2>
+                  <h2 className="text-base font-semibold text-slate-800">Inactive / Sold Holdings ({inactiveHoldings.length})</h2>
                   <p className="text-xs text-slate-500">Historical realized gain/loss records</p>
                 </div>
                 <button
@@ -445,41 +484,64 @@ export default function Home() {
                   <table className="w-full text-left text-sm text-slate-600">
                     <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-200">
                       <tr>
-                        <th className="px-6 py-3">Fund Name</th>
-                        <th className="px-6 py-3 text-right">Units Redeemed</th>
-                        <th className="px-6 py-3 text-right">Buy Price</th>
-                        <th className="px-6 py-3 text-right">Sell Price</th>
+                        <th className="px-6 py-3">Fund Details</th>
+                        <th className="px-6 py-3 text-right">Units Sold</th>
+                        <th className="px-6 py-3 text-right">Total Invested</th>
+                        <th className="px-6 py-3 text-right">Redeemed Value</th>
                         <th className="px-6 py-3 text-right">Realized P&L</th>
                         <th className="px-6 py-3 text-center no-print">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {inactiveHoldings.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50 transition">
-                          <td className="px-6 py-4 font-medium text-slate-900">
-                            <div>{item.scheme_name}</div>
-                            <span className="text-xs text-slate-400 font-mono">Code: {item.scheme_code} {item.sell_date ? `• Sold on ${item.sell_date}` : ''}</span>
-                          </td>
-                          <td className="px-6 py-4 text-right font-mono">{item.units}</td>
-                          <td className="px-6 py-4 text-right font-mono">₹{item.avg_buy_price?.toFixed(2)}</td>
-                          <td className="px-6 py-4 text-right font-mono">₹{item.sell_price?.toFixed(2)}</td>
-                          <td className="px-6 py-4 text-right">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-                              item.realized_profit >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                            }`}>
-                              {item.realized_profit >= 0 ? '+' : ''}₹{item.realized_profit?.toFixed(2)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-center no-print">
-                            <button
-                              onClick={() => handleDeleteInactive(item.id, item.scheme_name)}
-                              className="px-2.5 py-1 text-xs font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition"
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {inactiveHoldings.map((item) => {
+                        const totalCost = item.units * (item.avg_buy_price || 0);
+                        const totalRedeemed = item.units * (item.sell_price || 0);
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50 transition">
+                            <td className="px-6 py-4 font-medium text-slate-900">
+                              <div>{item.scheme_name}</div>
+                              <span className="text-xs text-slate-400 font-mono">
+                                Code: {item.scheme_code}
+                                {item.folio_number ? ` • Folio: ${item.folio_number}` : ''}
+                                {item.purchase_date ? ` • Bought: ${item.purchase_date}` : ''}
+                                {item.sell_date ? ` • Sold: ${item.sell_date}` : ''}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-mono">{item.units}</td>
+                            <td className="px-6 py-4 text-right font-mono">
+                              <div className="font-medium text-slate-800">₹{totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              <span className="text-xs text-slate-400">@ ₹{item.avg_buy_price?.toFixed(2)}</span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-mono">
+                              <div className="font-semibold text-slate-900">₹{totalRedeemed.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              <span className="text-xs text-slate-400">@ ₹{item.sell_price?.toFixed(2)}</span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                                item.realized_profit >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                              }`}>
+                                {item.realized_profit >= 0 ? '+' : ''}₹{item.realized_profit?.toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-center no-print">
+                              <div className="flex items-center justify-center space-x-2">
+                                <button
+                                  onClick={() => setEditingInactiveFund(item)}
+                                  className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded transition"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteInactive(item.id, item.scheme_name)}
+                                  className="px-2.5 py-1 text-xs font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -529,6 +591,17 @@ export default function Home() {
             onClose={() => setEditingFund(null)}
             onSuccess={() => {
               setEditingFund(null);
+              loadData();
+            }}
+          />
+        )}
+
+        {editingInactiveFund && (
+          <EditInactiveModal
+            holding={editingInactiveFund}
+            onClose={() => setEditingInactiveFund(null)}
+            onSuccess={() => {
+              setEditingInactiveFund(null);
               loadData();
             }}
           />

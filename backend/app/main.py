@@ -50,6 +50,16 @@ class ActiveFundUpdate(BaseModel):
 class WatchlistAdd(BaseModel):
     scheme_code: str
 
+class InactiveHoldingSchema(BaseModel):
+    scheme_name: str
+    scheme_code: Optional[str] = None
+    units: float
+    avg_buy_price: float
+    sell_price: float
+    folio_number: Optional[str] = "FOLIO-DEFAULT"
+    purchase_date: Optional[str] = None
+    sell_date: Optional[str] = None
+
 
 @app.get("/")
 def read_root():
@@ -63,7 +73,7 @@ def trigger_manual_sync():
     return {"status": "success", "message": "Manual NAV sync completed."}
 
 
-# --- PORTFOLIO ENDPOINTS ---
+# --- ACTIVE PORTFOLIO ENDPOINTS ---
 @app.get("/api/portfolio")
 def get_portfolio(db: Session = Depends(get_db)):
     total_invested = 0.0
@@ -207,32 +217,69 @@ def get_fund_details(scheme_code: str):
         raise HTTPException(status_code=404, detail="Scheme details not found")
     return data
 
-class InactiveHoldingSchema(BaseModel):
-    scheme_code: str
-    scheme_name: str
-    units: float
-    avg_buy_price: float
-    sell_price: float
-    sell_date: str | None = None
 
+# --- INACTIVE PORTFOLIO ENDPOINTS ---
 @app.get("/api/inactive-portfolio")
 def get_inactive_portfolio(db: Session = Depends(get_db)):
     return db.query(models.InactiveHolding).all()
 
+
 @app.post("/api/inactive-portfolio")
 def add_inactive_holding(holding: InactiveHoldingSchema, db: Session = Depends(get_db)):
-    realized_profit = (holding.sell_price - holding.avg_buy_price) * holding.units
+    if holding.scheme_code:
+        code = holding.scheme_code.strip()
+    else:
+        count = db.query(models.InactiveHolding).count()
+        code = f"SOLD_{count + 1}"
+
+    realized_profit = round((holding.sell_price - holding.avg_buy_price) * holding.units, 2)
+    
     new_inactive = models.InactiveHolding(
-        **holding.dict(),
-        realized_profit=realized_profit
+        scheme_code=code,
+        scheme_name=holding.scheme_name.strip(),
+        units=holding.units,
+        avg_buy_price=holding.avg_buy_price,
+        sell_price=holding.sell_price,
+        realized_profit=realized_profit,
+        folio_number=holding.folio_number,
+        purchase_date=holding.purchase_date,
+        sell_date=holding.sell_date
     )
     db.add(new_inactive)
     db.commit()
     db.refresh(new_inactive)
     return new_inactive
 
+
 @app.delete("/api/inactive-portfolio/{holding_id}")
 def delete_inactive_holding(holding_id: int, db: Session = Depends(get_db)):
     db.query(models.InactiveHolding).filter(models.InactiveHolding.id == holding_id).delete()
     db.commit()
     return {"status": "deleted"}
+
+class InactiveHoldingUpdate(BaseModel):
+    scheme_name: str
+    units: float
+    avg_buy_price: float
+    sell_price: float
+    folio_number: Optional[str] = "FOLIO-DEFAULT"
+    purchase_date: Optional[str] = None
+    sell_date: Optional[str] = None
+
+@app.put("/api/inactive-portfolio/{holding_id}")
+def update_inactive_holding(holding_id: int, payload: InactiveHoldingUpdate, db: Session = Depends(get_db)):
+    existing = db.query(models.InactiveHolding).filter(models.InactiveHolding.id == holding_id).first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Inactive fund record not found")
+    
+    existing.scheme_name = payload.scheme_name.strip()
+    existing.units = payload.units
+    existing.avg_buy_price = payload.avg_buy_price
+    existing.sell_price = payload.sell_price
+    existing.realized_profit = round((payload.sell_price - payload.avg_buy_price) * payload.units, 2)
+    existing.folio_number = payload.folio_number
+    existing.purchase_date = payload.purchase_date
+    existing.sell_date = payload.sell_date
+
+    db.commit()
+    return {"message": "Inactive fund updated successfully"}

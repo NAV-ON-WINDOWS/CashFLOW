@@ -67,4 +67,7 @@ export const getInactiveHoldings = () => api.get('/inactive-portfolio');
 export const addInactiveHolding = (data: any) => api.post('/inactive-portfolio', data);
 export const deleteInactiveHolding = (id: number) => api.delete(`/inactive-portfolio/${id}`);
 
+export const updateInactiveHolding = (id: number, data: any) => 
+  api.put(`/inactive-portfolio/${id}`, data);
+
 export default api;
