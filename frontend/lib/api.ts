@@ -1,15 +1,14 @@
 import axios from 'axios';
 
-export const API_BASE = 'http://localhost:8000/api';
-
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
 export interface Holding {
+  id?: number;
   scheme_code: string;
   scheme_name: string;
   units: number;
@@ -20,6 +19,7 @@ export interface Holding {
   returns_percentage: number;
   nav_date: string;
   folio_number?: string;
+  purchase_date?: string;
 }
 
 export interface PortfolioSummary {
@@ -39,7 +39,7 @@ export interface WatchlistFund {
   scheme_name: string;
   category: string;
   latest_nav: number;
-  latest_nav_date: string;
+  nav_date: string;
   metrics: {
     return_1m_pct: number | null;
     return_6m_pct: number | null;
@@ -48,31 +48,55 @@ export interface WatchlistFund {
   };
 }
 
+export interface FundDetail {
+  scheme_code: string;
+  scheme_name: string;
+  category: string;
+  latest_nav: number;
+  nav_date: string;
+  metrics: {
+    return_1m_pct: number | null;
+    return_6m_pct: number | null;
+    return_1y_pct: number | null;
+    all_time_return_pct: number | null;
+  };
+  historical_data: {
+    date: string;
+    nav: number;
+  }[];
+}
+
+// Active Portfolio Endpoints
 export const fetchPortfolio = async (): Promise<PortfolioResponse> => {
   const res = await api.get('/portfolio');
   return res.data;
 };
 
+// Tracked Watchlist Endpoints
 export const fetchWatchlist = async (): Promise<WatchlistFund[]> => {
   const res = await api.get('/tracker/watchlist');
   return res.data;
 };
 
-export const fetchFundDetail = async (schemeCode: string) => {
+// Chart & Fund Detail Endpoint
+export const fetchFundDetail = async (schemeCode: string): Promise<FundDetail> => {
   const res = await api.get(`/tracker/fund/${schemeCode}`);
   return res.data;
 };
 
-export const getInactiveHoldings = () => api.get('/inactive-portfolio');
-export const addInactiveHolding = (data: any) => api.post('/inactive-portfolio', data);
-export const deleteInactiveHolding = (id: number) => api.delete(`/inactive-portfolio/${id}`);
-
-export const updateInactiveHolding = (id: number, data: any) => 
-  api.put(`/inactive-portfolio/${id}`, data);
-
+// Inactive / Dormant Portfolio Endpoints
 export const getInactiveHoldings = async (): Promise<PortfolioResponse> => {
   const res = await api.get('/inactive-portfolio');
   return res.data;
 };
+
+export const addInactiveHolding = (data: any) => 
+  api.post('/inactive-portfolio', data);
+
+export const updateInactiveHolding = (id: number, data: any) => 
+  api.put(`/inactive-portfolio/${id}`, data);
+
+export const deleteInactiveHolding = (id: number) => 
+  api.delete(`/inactive-portfolio/${id}`);
 
 export default api;
