@@ -25,10 +25,9 @@ async def lifespan(app: FastAPI):
     # Shutdown: Stop APScheduler
     stop_scheduler()
 
-app = FastAPI(title="myCAMS Portfolio Monitor API", lifespan=lifespan)
+app = FastAPI(title="CashFLOW API", version="1.0.0", lifespan=lifespan)
 
 # --- 1. CORS CONFIGURATION ---
-# Restrict wildcard origin to authorized local and client frontends
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -41,7 +40,6 @@ app.add_middleware(
 )
 
 # --- 2. SECURITY HEADERS MIDDLEWARE ---
-# Injects standard defensive headers on all outgoing responses
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -53,10 +51,9 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 # --- 3. GLOBAL ERROR HANDLER ---
-# Prevents raw Python stack traces and internal errors from leaking to the client
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logging.error(f"Unhandled server error encountered on {request.url.path}: {exc}")
+    logging.error(f"Unhandled error on {request.url.path}: {exc}")
     return JSONResponse(
         status_code=500,
         content={"message": "An internal server error occurred. Please try again later."},
@@ -102,7 +99,7 @@ class InactiveHoldingUpdate(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"status": "healthy", "message": "API is running with SQLite & APScheduler!"}
+    return {"status": "healthy", "service": "CashFLOW API", "scheduler": "running"}
 
 
 # --- MANUAL SYNC TRIGGER ---
@@ -273,7 +270,6 @@ def get_inactive_portfolio(db: Session = Depends(get_db)):
         invested_amt = units * avg_price
         total_invested += invested_amt
 
-        # Fetch Live NAV dynamically
         nav_info = get_latest_nav(code) if code and not code.startswith("SOLD_") else None
         
         current_nav = nav_info["nav"] if (nav_info and nav_info.get("nav", 0) > 0) else avg_price
