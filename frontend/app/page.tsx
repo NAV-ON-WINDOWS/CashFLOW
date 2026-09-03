@@ -8,6 +8,7 @@ import EditFundModal from '../components/EditFundModal';
 import EditInactiveModal from '../components/EditInactiveModal';
 import NavChartModal from '../components/NavChartModal';
 import AllocationChart from '../components/AllocationChart';
+import AnimatedCounter from '../components/AnimatedCounter';
 import api, { 
   fetchPortfolio, 
   fetchWatchlist, 
@@ -26,7 +27,6 @@ export default function Home() {
   const [editingInactiveFund, setEditingInactiveFund] = useState<any | null>(null);
   const [mounted, setMounted] = useState(false);
   
-  // Both portfolios now use the dynamic PortfolioResponse shape
   const [portfolio, setPortfolio] = useState<PortfolioResponse | null>(null);
   const [inactiveHoldings, setInactiveHoldings] = useState<PortfolioResponse | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistFund[]>([]);
@@ -46,8 +46,7 @@ export default function Home() {
       ]);
       setPortfolio(pData);
       setWatchlist(wData);
-      // Fallback handles if the axios response is wrapped in .data or returned directly
-      setInactiveHoldings(iData.data ? iData.data : iData);
+      setInactiveHoldings(iData);
     } catch (err: any) {
       console.error('Error fetching data:', err);
     } finally {
@@ -89,18 +88,17 @@ export default function Home() {
     }
   };
 
-  // --- FINANCIAL AGGREGATIONS ---
   // 1. Active Portfolio Live Metrics
-  const activeInvested = portfolio?.summary.total_invested || 0;
-  const activeCurrentValue = portfolio?.summary.total_current_value || 0;
-  const activePnL = portfolio?.summary.total_profit_loss || 0;
-  const activeReturnPct = portfolio?.summary.overall_return_percentage || 0;
+  const activeInvested = portfolio?.summary?.total_invested || 0;
+  const activeCurrentValue = portfolio?.summary?.total_current_value || 0;
+  const activePnL = portfolio?.summary?.total_profit_loss || 0;
+  const activeReturnPct = portfolio?.summary?.overall_return_percentage || 0;
 
   // 2. Dormant (Inactive) Portfolio Live Metrics
-  const dormantInvested = inactiveHoldings?.summary.total_invested || 0;
-  const dormantCurrentValue = inactiveHoldings?.summary.total_current_value || 0;
-  const dormantPnL = inactiveHoldings?.summary.total_profit_loss || 0;
-  const dormantReturnPct = inactiveHoldings?.summary.overall_return_percentage || 0;
+  const dormantInvested = inactiveHoldings?.summary?.total_invested || 0;
+  const dormantCurrentValue = inactiveHoldings?.summary?.total_current_value || 0;
+  const dormantPnL = inactiveHoldings?.summary?.total_profit_loss || 0;
+  const dormantReturnPct = inactiveHoldings?.summary?.overall_return_percentage || 0;
 
   // 3. Consolidated Master Metrics
   const totalCombinedInvested = activeInvested + dormantInvested;
@@ -129,7 +127,6 @@ export default function Home() {
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Export Dropdown */}
           <div className="relative no-print" ref={dropdownRef}>
             <button
               onClick={() => setShowExportDropdown(!showExportDropdown)}
@@ -168,7 +165,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* Unified Navigation Switcher */}
           <div className="no-print flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
             <button
               onClick={() => setActiveTab('overview')}
@@ -208,7 +204,7 @@ export default function Home() {
       </header>
 
       <main className="max-w-6xl mx-auto p-8">
-        {/* TAB 1: MASTER OVERVIEW HOMEPAGE */}
+        {/* TAB 1: MASTER OVERVIEW */}
         {activeTab === 'overview' && portfolio && (
           <div className="space-y-8">
             <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-sm border border-slate-700/50">
@@ -216,28 +212,40 @@ export default function Home() {
                 <div>
                   <span className="text-xs uppercase font-semibold text-slate-400 tracking-wider">Total Capital Allocated</span>
                   <p className="text-3xl font-bold mt-1 tracking-tight">
-                    ₹{totalCombinedInvested.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <AnimatedCounter value={totalCombinedInvested} prefix="₹" decimals={2} isCurrency />
                   </p>
-                  <span className="text-[11px] text-slate-400">Active (₹{activeInvested.toLocaleString('en-IN')}) + Dormant (₹{dormantInvested.toLocaleString('en-IN')})</span>
+                  <span className="text-[11px] text-slate-400">
+                    Active (₹{activeInvested.toLocaleString('en-IN')}) + Dormant (₹{dormantInvested.toLocaleString('en-IN')})
+                  </span>
                 </div>
                 <div>
                   <span className="text-xs uppercase font-semibold text-slate-400 tracking-wider">Combined Live Net Worth</span>
                   <p className="text-3xl font-bold mt-1 text-blue-400 tracking-tight">
-                    ₹{totalCombinedCurrentValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <AnimatedCounter value={totalCombinedCurrentValue} prefix="₹" decimals={2} isCurrency />
                   </p>
                   <span className="text-[11px] text-slate-400">If all funds were redeemed today</span>
                 </div>
                 <div>
                   <span className="text-xs uppercase font-semibold text-slate-400 tracking-wider">Total Live Gain / Loss</span>
                   <p className={`text-3xl font-bold mt-1 tracking-tight ${totalCombinedPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {totalCombinedPnL >= 0 ? '+' : ''}₹{totalCombinedPnL.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <AnimatedCounter 
+                      value={Math.abs(totalCombinedPnL)} 
+                      prefix={totalCombinedPnL >= 0 ? '+₹' : '-₹'} 
+                      decimals={2} 
+                      isCurrency 
+                    />
                   </p>
                   <span className="text-[11px] text-slate-400">Active + Dormant P&L</span>
                 </div>
                 <div>
                   <span className="text-xs uppercase font-semibold text-slate-400 tracking-wider">Cumulative Return</span>
                   <p className={`text-3xl font-bold mt-1 tracking-tight ${parseFloat(combinedOverallReturn) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {parseFloat(combinedOverallReturn) >= 0 ? '+' : ''}{combinedOverallReturn}%
+                    <AnimatedCounter 
+                      value={parseFloat(combinedOverallReturn)} 
+                      prefix={parseFloat(combinedOverallReturn) >= 0 ? '+' : ''} 
+                      suffix="%" 
+                      decimals={2} 
+                    />
                   </p>
                   <span className="text-[11px] text-slate-400">Across all holdings</span>
                 </div>
@@ -245,7 +253,6 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Active Portfolio Summary Card */}
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-4">
@@ -260,12 +267,20 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-4 py-3 border-y border-slate-100 mb-4">
                     <div>
                       <span className="text-xs text-slate-400 block font-medium">Current Live Value</span>
-                      <span className="text-base font-bold text-slate-800 font-mono">₹{activeCurrentValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-base font-bold text-slate-800 font-mono">
+                        <AnimatedCounter value={activeCurrentValue} prefix="₹" decimals={2} isCurrency />
+                      </span>
                     </div>
                     <div>
                       <span className="text-xs text-slate-400 block font-medium">Live P&L</span>
                       <span className={`text-base font-bold font-mono ${activePnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {activePnL >= 0 ? '+' : ''}₹{activePnL.toLocaleString('en-IN')} ({activeReturnPct}%)
+                        <AnimatedCounter 
+                          value={Math.abs(activePnL)} 
+                          prefix={activePnL >= 0 ? '+₹' : '-₹'} 
+                          suffix={` (${activeReturnPct}%)`}
+                          decimals={2} 
+                          isCurrency 
+                        />
                       </span>
                     </div>
                   </div>
@@ -278,7 +293,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Dormant / Inactive Summary Card */}
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-4">
@@ -293,12 +307,20 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-4 py-3 border-y border-slate-100 mb-4">
                     <div>
                       <span className="text-xs text-slate-400 block font-medium">Value if Redeemed</span>
-                      <span className="text-base font-bold text-slate-800 font-mono">₹{dormantCurrentValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-base font-bold text-slate-800 font-mono">
+                        <AnimatedCounter value={dormantCurrentValue} prefix="₹" decimals={2} isCurrency />
+                      </span>
                     </div>
                     <div>
                       <span className="text-xs text-slate-400 block font-medium">Live P&L</span>
                       <span className={`text-base font-bold font-mono ${dormantPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {dormantPnL >= 0 ? '+' : ''}₹{dormantPnL.toLocaleString('en-IN', { minimumFractionDigits: 2 })} ({dormantReturnPct}%)
+                        <AnimatedCounter 
+                          value={Math.abs(dormantPnL)} 
+                          prefix={dormantPnL >= 0 ? '+₹' : '-₹'} 
+                          suffix={` (${dormantReturnPct}%)`}
+                          decimals={2} 
+                          isCurrency 
+                        />
                       </span>
                     </div>
                   </div>
@@ -314,28 +336,42 @@ export default function Home() {
           </div>
         )}
 
-        {/* TAB 2: ACTIVE PORTFOLIO DETAILS */}
+        {/* TAB 2: ACTIVE PORTFOLIO */}
         {activeTab === 'portfolio' && portfolio && (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Invested Capital</span>
-                <p className="text-2xl font-bold mt-1 text-slate-800">₹{portfolio.summary.total_invested.toLocaleString('en-IN')}</p>
+                <p className="text-2xl font-bold mt-1 text-slate-800">
+                  <AnimatedCounter value={portfolio.summary.total_invested} prefix="₹" isCurrency />
+                </p>
               </div>
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Current Net Worth</span>
-                <p className="text-2xl font-bold mt-1 text-blue-600">₹{portfolio.summary.total_current_value.toLocaleString('en-IN')}</p>
+                <p className="text-2xl font-bold mt-1 text-blue-600">
+                  <AnimatedCounter value={portfolio.summary.total_current_value} prefix="₹" decimals={2} isCurrency />
+                </p>
               </div>
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Profit / Loss</span>
                 <p className={`text-2xl font-bold mt-1 ${portfolio.summary.total_profit_loss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {portfolio.summary.total_profit_loss >= 0 ? '+' : ''}₹{portfolio.summary.total_profit_loss.toLocaleString('en-IN')}
+                  <AnimatedCounter 
+                    value={Math.abs(portfolio.summary.total_profit_loss)} 
+                    prefix={portfolio.summary.total_profit_loss >= 0 ? '+₹' : '-₹'} 
+                    decimals={2}
+                    isCurrency 
+                  />
                 </p>
               </div>
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Overall Return</span>
                 <p className={`text-2xl font-bold mt-1 ${portfolio.summary.overall_return_percentage >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {portfolio.summary.overall_return_percentage}%
+                  <AnimatedCounter 
+                    value={portfolio.summary.overall_return_percentage} 
+                    prefix={portfolio.summary.overall_return_percentage >= 0 ? '+' : ''} 
+                    suffix="%" 
+                    decimals={2} 
+                  />
                 </p>
               </div>
             </div>
@@ -405,32 +441,42 @@ export default function Home() {
           </div>
         )}
 
-        {/* TAB 3: DORMANT / INACTIVE DETAILS */}
+        {/* TAB 3: DORMANT / INACTIVE */}
         {activeTab === 'inactive' && inactiveHoldings && (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Capital Invested</span>
                 <p className="text-2xl font-bold mt-1 text-slate-800">
-                  ₹{inactiveHoldings.summary.total_invested.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  <AnimatedCounter value={inactiveHoldings.summary.total_invested} prefix="₹" decimals={2} isCurrency />
                 </p>
               </div>
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Value if Redeemed Today</span>
                 <p className="text-2xl font-bold mt-1 text-blue-600">
-                  ₹{inactiveHoldings.summary.total_current_value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  <AnimatedCounter value={inactiveHoldings.summary.total_current_value} prefix="₹" decimals={2} isCurrency />
                 </p>
               </div>
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Current P&L if Redeemed</span>
                 <p className={`text-2xl font-bold mt-1 ${inactiveHoldings.summary.total_profit_loss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {inactiveHoldings.summary.total_profit_loss >= 0 ? '+' : ''}₹{inactiveHoldings.summary.total_profit_loss.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  <AnimatedCounter 
+                    value={Math.abs(inactiveHoldings.summary.total_profit_loss)} 
+                    prefix={inactiveHoldings.summary.total_profit_loss >= 0 ? '+₹' : '-₹'} 
+                    decimals={2}
+                    isCurrency 
+                  />
                 </p>
               </div>
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Current Live Return</span>
                 <p className={`text-2xl font-bold mt-1 ${inactiveHoldings.summary.overall_return_percentage >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {inactiveHoldings.summary.overall_return_percentage}%
+                  <AnimatedCounter 
+                    value={inactiveHoldings.summary.overall_return_percentage} 
+                    prefix={inactiveHoldings.summary.overall_return_percentage >= 0 ? '+' : ''} 
+                    suffix="%" 
+                    decimals={2} 
+                  />
                 </p>
               </div>
             </div>
@@ -441,7 +487,7 @@ export default function Home() {
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div>
                   <h2 className="text-base font-semibold text-slate-800">Dormant Holdings ({inactiveHoldings.holdings.length})</h2>
-                  <p className="text-xs text-slate-500">Live AMFI tracking for inactive funds</p>
+                  <span className="text-xs text-slate-500 no-print">Click any row to view 1-year NAV performance chart</span>
                 </div>
                 <button
                   onClick={() => setShowAddInactiveModal(true)}
@@ -467,18 +513,35 @@ export default function Home() {
                     {inactiveHoldings.holdings?.map((item) => {
                       const investedAmount = item.units * item.avg_buy_price;
                       return (
-                        <tr key={item.id} className="hover:bg-slate-50 transition cursor-pointer" onClick={() => setSelectedScheme(item.scheme_code)}>
+                        <tr 
+                          key={item.id} 
+                          onClick={() => {
+                            if (item.scheme_code && !item.scheme_code.startsWith('SOLD_') && !item.scheme_code.startsWith('CUSTOM_')) {
+                              setSelectedScheme(item.scheme_code);
+                            } else {
+                              alert("Historical charts require a valid AMFI Scheme Code. Edit this fund to add its AMFI code.");
+                            }
+                          }}
+                          className="hover:bg-blue-50/40 cursor-pointer transition"
+                        >
                           <td className="px-6 py-4 font-medium text-slate-900">
                             <div>{item.scheme_name}</div>
-                            <span className="text-xs text-slate-400 font-mono">Code: {item.scheme_code} • {item.nav_date}</span>
+                            <span className="text-xs text-slate-400 font-mono">
+                              Code: {item.scheme_code} • {item.nav_date}
+                              {item.folio_number ? ` • Folio: ${item.folio_number}` : ''}
+                            </span>
                           </td>
                           <td className="px-6 py-4 text-right font-mono">{item.units}</td>
                           <td className="px-6 py-4 text-right font-mono">
-                            <div className="font-semibold text-slate-900">₹{investedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div className="font-semibold text-slate-900">
+                              ₹{investedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
                             <span className="text-xs text-slate-400">@ ₹{item.avg_buy_price.toFixed(2)}/u</span>
                           </td>
                           <td className="px-6 py-4 text-right font-mono font-medium text-slate-800">₹{item.current_nav.toFixed(2)}</td>
-                          <td className="px-6 py-4 text-right font-mono font-semibold text-slate-900">₹{item.current_value.toLocaleString('en-IN')}</td>
+                          <td className="px-6 py-4 text-right font-mono font-semibold text-slate-900">
+                            ₹{item.current_value.toLocaleString('en-IN')}
+                          </td>
                           <td className="px-6 py-4 text-right">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${item.profit_loss >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
                               {item.profit_loss >= 0 ? '+' : ''}₹{item.profit_loss.toFixed(2)} ({item.returns_percentage}%)
@@ -486,8 +549,24 @@ export default function Home() {
                           </td>
                           <td className="px-6 py-4 text-center no-print">
                             <div className="flex items-center justify-center space-x-2">
-                              <button onClick={(e) => { e.stopPropagation(); setEditingInactiveFund(item); }} className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded transition">Edit</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleDeleteInactive(item.id, item.scheme_name); }} className="px-2.5 py-1 text-xs font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition">Delete</button>
+                              <button 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setEditingInactiveFund(item); 
+                                }} 
+                                className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded transition"
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  handleDeleteInactive(item.id, item.scheme_name); 
+                                }} 
+                                className="px-2.5 py-1 text-xs font-medium text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition"
+                              >
+                                Delete
+                              </button>
                             </div>
                           </td>
                         </tr>

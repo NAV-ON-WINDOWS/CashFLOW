@@ -17,3 +17,4 @@
 - [16] Added export to feature
 - [17] Updated dashboard with visuals
 - [18] Configured backend and frontend dockerfiles
+- [19] Added inactive holdings portfolio 

@@ -30,4 +30,6 @@ class InactiveHolding(Base):
     avg_buy_price = Column(Float)
     sell_price = Column(Float)
     realized_profit = Column(Float)
+    folio_number = Column(String, nullable=True)
+    purchase_date = Column(String, nullable=True)
     sell_date = Column(String, nullable=True)
