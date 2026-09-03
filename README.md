@@ -1,111 +1,89 @@
-# 🔒 myCAMS Portfolio Monitor (Local-First & Privacy-Focused)
+# myCAMS Portfolio Monitor
 
-A self-hosted, privacy-centric mutual fund portfolio monitor and analytics dashboard. Built to run locally on your machine, ensuring **100% of your holdings, invested capital, and folio numbers remain completely private on your local storage** while automatically fetching official daily valuations directly from the Association of Mutual Funds in India (AMFI).
-
----
-
-## ✨ Why Local-First?
-
-* **Absolute Privacy:** Your financial net worth and portfolio allocation never get uploaded to third-party cloud databases or commercial tracking servers.
-* **No Authentication Friction:** No sign-up walls, forgotten passwords, or expired session tokens. Open the dashboard and start tracking immediately.
-* **Zero Cloud Latency:** Sub-millisecond read/write speeds powered by an embedded local SQLite engine.
-* **Offline Resilient:** View past portfolio snapshots and historical analytics even when disconnected from the internet.
+A production-ready, full-stack mutual fund tracking and analytics dashboard engineered to mirror Consolidated Account Statement (CAS) data while monitoring live market valuations. Built with **Next.js 14**, **FastAPI**, **SQLAlchemy**, and real-time **AMFI** feeds.
 
 ---
 
-## 🚀 Core Features
+## Architecture Overview
 
-* **Live AMFI Integration:** Automatically retrieves official end-of-day Net Asset Values (NAV) directly from the AMFI daily text feed.
-* **Automated Background Sync:** Embedded `APScheduler` CRON job silently polls and updates latest closing valuations daily at 11:05 PM IST.
-* **Active Portfolio Tracking & CRUD:** Manage mutual fund holdings with real-time calculations for invested capital, current net worth, and absolute/percentage returns.
-* **Watchlist Analytics:** Track prospective or benchmark funds with automated 1-month, 6-month, 1-year, and all-time performance metrics.
-* **Interactive Visualizations (Recharts):**
-  * **NAV History:** Chronologically sorted area charts visualizing long-term fund performance without rendering glitches.
-  * **Asset Allocation:** Interactive donut chart displaying portfolio diversification and fund weight distributions.
-* **Multi-Format Statement Exports:** * Clean, print-optimized **PDF Consolidated Account Statements (CAS)**.
-  * Native client-side exports for **Excel Workbooks (`.xlsx`)** and raw **CSVs**.
-* **Zero-Config Local Persistence:** Utilizes an embedded SQLite database (`portfolio.db`) managed via SQLAlchemy.
-* **Containerized Deployment:** Multi-stage Docker build and unified `docker-compose.yml` for isolated single-command startup.
+* **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts, Lucide Icons.
+* **Backend**: FastAPI, SQLAlchemy, SQLite, Pydantic, APScheduler.
+* **Data Sources**: AMFI (Association of Mutual Funds in India) official open endpoints.
+* **Security Layer**: Global defensive HTTP middleware, restricted CORS policy, automated unhandled exception masking.
 
 ---
 
-## 🛠️ Tech Stack
+## Key Features
 
-* **Frontend:** Next.js (App Router), React, Tailwind CSS, Recharts, SheetJS (`xlsx`), Axios
-* **Backend:** FastAPI, Python, Uvicorn, SQLAlchemy, APScheduler
-* **Database:** SQLite (Local file-based persistent storage)
-* **Packaging:** Docker, Docker Compose
+### 1. Master Overview Dashboard
+* **Consolidated Net Worth**: Aggregates Active and Dormant holdings into real-time portfolio metrics (Total Capital Allocated, Combined Live Net Worth, Total P&L, Cumulative ROI).
+* **Dual Dashboard Layout**: Side-by-side management view separating live active contributions from dormant/parked investments.
+* **Rolling Numerical Transitions**: Integrated `AnimatedCounter` component applying cubic-ease roll-ins to financial metrics.
+* **Master Asset Allocation**: Consolidated multi-slice doughnut visualization mapping market weight distribution across the entire portfolio.
 
----
+### 2. Active Portfolio Monitoring
+* **Automated Daily Syncing**: Powered by APScheduler, active scheme NAVs refresh every evening post-market directly against AMFI raw data.
+* **Unrealized Gain/Loss Analysis**: Live calculation of absolute P&L and percentage returns based on exact unit balances and average purchase costs.
+* **1-Year Performance Charts**: Click-to-inspect interactive area charts mapping historical NAV trends for individual schemes.
 
-## 📦 Quick Start (Docker - Recommended)
+### 3. Dormant (Inactive) Portfolio Tracking
+* **Dynamic Valuation**: Inactive/parked folios are actively tracked using live market rates rather than remaining static entries, tracking potential value if redeemed today.
+* **Historical NAV Inspection**: Integrated modal support to view 1-year historical NAV trajectory for dormant AMFI-registered assets.
+* **Isolated Bookkeeping**: Distinct database models to track redemption proceeds, exit dates, and historical buy metrics without distorting active performance.
 
-Run the entire application in isolated local containers:
+### 4. Tracked Watchlist & Discovery
+* **Benchmark Metrics**: Tracks schemes under consideration with 1-month, 6-month, 1-year, and all-time calculated performance returns.
+* **AMFI Scheme Lookup**: Rapid tracking via standardized AMFI scheme codes.
 
-```bash
-# Clone the repository
-git clone https://github.com/NAV-ON-WINDOWS/mycams-clone
-cd mycams-clone
-
-# Build and start services
-docker compose up --build
-```
-
-* **Frontend Dashboard:** `http://localhost:3000`
-* **FastAPI Backend & Swagger API Docs:** `http://localhost:8000/docs`
-
----
-
-## 💻 Local Development Setup (Native OS)
-
-If you prefer running the processes natively without Docker:
-
-### 1. Backend (FastAPI + SQLite)
-```bash
-cd backend
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
-```
-
-### 2. Frontend (Next.js)
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### 5. Multi-Format CAS Export
+* Direct client-side report generation supporting formatted **Excel workbooks (.xlsx)**, **raw data spreadsheets (.csv)**, and print-ready **PDF documents**.
 
 ---
 
-## 📂 Project Structure
+## Security Hardening
+
+The application conforms to automated security audit standards:
+
+| Layer | Configuration | Implementation |
+| :--- | :--- | :--- |
+| **CORS Policy** | Explicit Allowlist | Restricted strictly to `http://localhost:3000` and trusted origins. Wildcard access (`*`) is disabled. |
+| **Defensive Headers** | Global Middleware | Injects `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Referrer-Policy`. |
+| **Error Handling** | Exception Interceptor | Server errors are caught centrally, logging technical details server-side while masking raw stack traces from client responses. |
+| **Database Injection** | Parameterized ORM | All transactional interactions run through parameterized SQLAlchemy ORM queries. |
+
+---
+
+## Project Structure
 
 ```text
-mycams-clone/
-├── docker-compose.yml              # Local multi-container orchestration
 ├── backend/
-│   ├── Dockerfile                  # Python 3.11-slim container spec
-│   ├── requirements.txt            # Python dependencies
 │   ├── app/
-│   │   ├── main.py                 # FastAPI endpoints, CORS, & app lifespan
-│   │   ├── database.py             # SQLAlchemy local SQLite connection
-│   │   ├── models.py               # Database schemas (Holdings & Watchlist)
+│   │   ├── database.py             # SQLite connection and session setup
+│   │   ├── main.py                 # FastAPI application routes, middleware, and security
+│   │   ├── models.py               # SQLAlchemy ORM models (Holding, InactiveHolding, Watchlist)
 │   │   └── services/
-│   │       ├── amfi_fetcher.py     # Live NAV extraction from AMFI feed
-│   │       ├── historical_tracker.py # Historical returns calculations
-│   │       └── scheduler.py        # Daily background AMFI sync worker
+│   │       ├── amfi_fetcher.py     # Live AMFI parser and caching utility
+│   │       ├── historical_tracker.py# Performance return calculations and historic data fetch
+│   │       └── scheduler.py        # Automated daily APScheduler tasks
+│   ├── requirements.txt
+│   └── portfolio.db
+│
 ├── frontend/
-│   ├── Dockerfile                  # Next.js multi-stage production build
-│   ├── package.json
 │   ├── app/
-│   │   ├── page.tsx                # Main dashboard UI, metrics, and export logic
-│   │   └── globals.css             # Tailwind styling & print/PDF rules
-│   ├── components/                 # Modals & Charts (AllocationChart, NavChart, etc.)
-│   └── lib/
-│       ├── api.ts                  # Axios client configuration
-│       └── exportUtils.ts          # SheetJS Excel/CSV client export handlers
-```
-
----
-
-## 🛣️ Roadmap
-* **Extended SIP Analytics:** Add XIRR (Extended Internal Rate of Return) calculations for periodic SIP transactions.
-* **Automated Data Backup:** Local JSON/SQLite export & import mechanism to easily transfer portfolio data across machines.
+│   │   ├── globals.css             # Base canvas background configuration
+│   │   ├── layout.tsx              # Root HTML wrapper
+│   │   └── page.tsx                # Master dashboard and tab routing
+│   ├── components/
+│   │   ├── AddInactiveModal.tsx    # Modal for logging dormant funds
+│   │   ├── AddTransactionModal.tsx # Modal for logging active fund transactions
+│   │   ├── AddWatchlistModal.tsx   # Modal for adding funds to watchlist
+│   │   ├── AllocationChart.tsx     # Recharts multi-slice asset breakdown
+│   │   ├── AnimatedCounter.tsx     # requestAnimationFrame numerical roll-in
+│   │   ├── EditFundModal.tsx       # Active fund editor
+│   │   ├── EditInactiveModal.tsx   # Dormant fund editor
+│   │   └── NavChartModal.tsx       # Interactive 1-year historical chart
+│   ├── lib/
+│   │   ├── api.ts                  # Axios client definitions and endpoints
+│   │   └── exportUtils.ts          # CSV and Excel export generators
+│   └── package.json
+└── README.md
