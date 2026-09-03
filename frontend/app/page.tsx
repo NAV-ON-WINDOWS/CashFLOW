@@ -116,7 +116,7 @@ export default function Home() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          Fetching live mutual fund data from AMFI...
+          Connecting to CashFLOW & AMFI Live feeds...
         </div>
       </div>
     );
@@ -126,9 +126,16 @@ export default function Home() {
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
       <header className="border-b border-slate-200 bg-white px-8 py-4 shadow-sm flex items-center justify-between sticky top-0 z-40">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">myCAMS Portfolio Monitor</h1>
+          <div className="flex items-center space-x-2">
+            <span className="text-xl font-black tracking-tight text-slate-900">
+              Cash<span className="text-blue-600">FLOW</span>
+            </span>
+            <span className="text-[10px] uppercase font-bold tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded">
+              Terminal
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Consolidated Account Statement • Generated on {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+            Consolidated Wealth Statement • Updated {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
           </p>
         </div>
 
@@ -148,12 +155,12 @@ export default function Home() {
             </button>
 
             {showExportDropdown && portfolio && (
-              <div className="absolute right-0 mt-2 w-44 rounded-lg bg-white border border-slate-100 shadow-xl py-1 z-50 text-xs text-slate-700">
+              <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white border border-slate-100 shadow-xl py-1 z-50 text-xs text-slate-700">
                 <button
                   onClick={() => { setShowExportDropdown(false); window.print(); }}
                   className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center space-x-2"
                 >
-                  <span>📄</span><span>Print / PDF Document</span>
+                  <span>📄</span><span>Print / PDF Statement</span>
                 </button>
                 <button
                   onClick={() => { setShowExportDropdown(false); exportToExcel(portfolio.holdings, portfolio.summary); }}
@@ -213,7 +220,7 @@ export default function Home() {
         {/* TAB 1: MASTER OVERVIEW */}
         {activeTab === 'overview' && portfolio && (
           <div className="space-y-6">
-            {/* Top 4 Summary Cards */}
+            {/* Top 4 Metric Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
@@ -288,7 +295,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Side-by-Side: Active vs Dormant Dedicated Dashboards */}
+            {/* Side-by-Side: Active vs Dormant Allocation Dashboards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Active Portfolio Section */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
