@@ -19,10 +19,8 @@ models.Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Start APScheduler
     start_scheduler()
     yield
-    # Shutdown: Stop APScheduler
     stop_scheduler()
 
 app = FastAPI(title="CashFLOW API", version="1.0.0", lifespan=lifespan)
@@ -70,9 +68,11 @@ class ActiveFundCreate(BaseModel):
 
 class ActiveFundUpdate(BaseModel):
     scheme_name: str
+    scheme_code: Optional[str] = None
     units: float
     avg_buy_price: float
     folio_number: Optional[str] = "FOLIO-DEFAULT"
+    purchase_date: Optional[str] = None
 
 class WatchlistAdd(BaseModel):
     scheme_code: str
@@ -89,6 +89,7 @@ class InactiveHoldingSchema(BaseModel):
 
 class InactiveHoldingUpdate(BaseModel):
     scheme_name: str
+    scheme_code: Optional[str] = None
     units: float
     avg_buy_price: float
     sell_price: float
@@ -146,7 +147,8 @@ def get_portfolio(db: Session = Depends(get_db)):
             "profit_loss": round(pnl, 2),
             "returns_percentage": returns_pct,
             "nav_date": nav_date,
-            "folio_number": item.folio_number
+            "folio_number": item.folio_number,
+            "purchase_date": item.purchase_date
         })
 
     total_profit_loss = total_current_value - total_invested
@@ -201,13 +203,24 @@ def update_fund(scheme_code: str, payload: ActiveFundUpdate, db: Session = Depen
     if not existing:
         raise HTTPException(status_code=404, detail="Fund not found")
     
+    # Allow changing AMFI scheme_code if provided and different
+    if payload.scheme_code:
+        new_code = payload.scheme_code.strip()
+        if new_code != scheme_code:
+            conflict = db.query(models.Holding).filter(models.Holding.scheme_code == new_code).first()
+            if conflict:
+                raise HTTPException(status_code=400, detail="Another fund with this scheme code already exists")
+            existing.scheme_code = new_code
+
     existing.scheme_name = payload.scheme_name.strip()
     existing.units = payload.units
     existing.avg_buy_price = payload.avg_buy_price
     existing.folio_number = payload.folio_number
+    if payload.purchase_date is not None:
+        existing.purchase_date = payload.purchase_date
     
     db.commit()
-    return {"message": "Fund updated successfully"}
+    return {"message": "Fund updated successfully", "scheme_code": existing.scheme_code}
 
 
 @app.delete("/api/portfolio/fund/{scheme_code}")
@@ -287,12 +300,15 @@ def get_inactive_portfolio(db: Session = Depends(get_db)):
             "scheme_name": scheme_name,
             "units": units,
             "avg_buy_price": avg_price,
+            "sell_price": item.sell_price,
             "current_nav": current_nav,
             "current_value": round(current_val, 2),
             "profit_loss": round(pnl, 2),
             "returns_percentage": returns_pct,
             "nav_date": nav_date,
-            "folio_number": item.folio_number
+            "folio_number": item.folio_number,
+            "purchase_date": item.purchase_date,
+            "sell_date": item.sell_date
         })
 
     total_profit_loss = total_current_value - total_invested
@@ -342,6 +358,9 @@ def update_inactive_holding(holding_id: int, payload: InactiveHoldingUpdate, db:
     if not existing:
         raise HTTPException(status_code=404, detail="Inactive fund record not found")
     
+    if payload.scheme_code is not None:
+        existing.scheme_code = payload.scheme_code.strip() if payload.scheme_code.strip() else None
+
     existing.scheme_name = payload.scheme_name.strip()
     existing.units = payload.units
     existing.avg_buy_price = payload.avg_buy_price
