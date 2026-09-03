@@ -1,15 +1,18 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+import logging
 from typing import Optional
+
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app import models
+from app.database import engine, get_db
 from app.services.amfi_fetcher import get_latest_nav
 from app.services.historical_tracker import calculate_performance_metrics
 from app.services.scheduler import start_scheduler, stop_scheduler, sync_active_navs
-from app.database import engine, get_db
-from app import models
 
 # Ensure tables exist
 models.Base.metadata.create_all(bind=engine)
@@ -24,13 +27,40 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="myCAMS Portfolio Monitor API", lifespan=lifespan)
 
+# --- 1. CORS CONFIGURATION ---
+# Restrict wildcard origin to authorized local and client frontends
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+
+# --- 2. SECURITY HEADERS MIDDLEWARE ---
+# Injects standard defensive headers on all outgoing responses
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+# --- 3. GLOBAL ERROR HANDLER ---
+# Prevents raw Python stack traces and internal errors from leaking to the client
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.error(f"Unhandled server error encountered on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"message": "An internal server error occurred. Please try again later."},
+    )
 
 # --- REQUEST SCHEMAS ---
 class ActiveFundCreate(BaseModel):
