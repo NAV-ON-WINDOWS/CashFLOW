@@ -19,3 +19,5 @@
 - [18] Configured backend and frontend dockerfiles
 - [19] Added inactive holdings portfolio 
 - [20] Added updated active and inactive holdings
+- [21] Updated security protocols
+- [22] Updated Name and frontend 
