@@ -1,6 +1,6 @@
-# myCAMS Portfolio Monitor
+# CashFLOW — Wealth & Mutual Fund Analytics Terminal
 
-A production-ready, full-stack mutual fund tracking and analytics dashboard engineered to mirror Consolidated Account Statement (CAS) data while monitoring live market valuations. Built with **Next.js 14**, **FastAPI**, **SQLAlchemy**, and real-time **AMFI** feeds.
+A production-grade, full-stack mutual fund tracking and analytics dashboard engineered to mirror Consolidated Account Statement (CAS) data with real-time market valuations. Built with **Next.js 14**, **FastAPI**, **SQLAlchemy**, and live **AMFI** data feeds.
 
 ---
 
@@ -8,8 +8,8 @@ A production-ready, full-stack mutual fund tracking and analytics dashboard engi
 
 * **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts, Lucide Icons.
 * **Backend**: FastAPI, SQLAlchemy, SQLite, Pydantic, APScheduler.
-* **Data Sources**: AMFI (Association of Mutual Funds in India) official open endpoints.
-* **Security Layer**: Global defensive HTTP middleware, restricted CORS policy, automated unhandled exception masking.
+* **Data Sources**: AMFI (Association of Mutual Funds in India) official open feeds.
+* **Security Layer**: Global defensive HTTP middleware, restricted CORS origin policy, centralized unhandled exception masking.
 
 ---
 
@@ -17,7 +17,7 @@ A production-ready, full-stack mutual fund tracking and analytics dashboard engi
 
 ### 1. Master Overview Dashboard
 * **Consolidated Net Worth**: Aggregates Active and Dormant holdings into real-time portfolio metrics (Total Capital Allocated, Combined Live Net Worth, Total P&L, Cumulative ROI).
-* **Dual Dashboard Layout**: Side-by-side management view separating live active contributions from dormant/parked investments.
+* **Dual Dashboard Layout**: Side-by-side management view separating active contributions from dormant/parked investments.
 * **Rolling Numerical Transitions**: Integrated `AnimatedCounter` component applying cubic-ease roll-ins to financial metrics.
 * **Master Asset Allocation**: Consolidated multi-slice doughnut visualization mapping market weight distribution across the entire portfolio.
 
@@ -53,37 +53,21 @@ The application conforms to automated security audit standards:
 
 ---
 
-## Project Structure
+## Local Development Setup
 
-```text
-├── backend/
-│   ├── app/
-│   │   ├── database.py             # SQLite connection and session setup
-│   │   ├── main.py                 # FastAPI application routes, middleware, and security
-│   │   ├── models.py               # SQLAlchemy ORM models (Holding, InactiveHolding, Watchlist)
-│   │   └── services/
-│   │       ├── amfi_fetcher.py     # Live AMFI parser and caching utility
-│   │       ├── historical_tracker.py# Performance return calculations and historic data fetch
-│   │       └── scheduler.py        # Automated daily APScheduler tasks
-│   ├── requirements.txt
-│   └── portfolio.db
-│
-├── frontend/
-│   ├── app/
-│   │   ├── globals.css             # Base canvas background configuration
-│   │   ├── layout.tsx              # Root HTML wrapper
-│   │   └── page.tsx                # Master dashboard and tab routing
-│   ├── components/
-│   │   ├── AddInactiveModal.tsx    # Modal for logging dormant funds
-│   │   ├── AddTransactionModal.tsx # Modal for logging active fund transactions
-│   │   ├── AddWatchlistModal.tsx   # Modal for adding funds to watchlist
-│   │   ├── AllocationChart.tsx     # Recharts multi-slice asset breakdown
-│   │   ├── AnimatedCounter.tsx     # requestAnimationFrame numerical roll-in
-│   │   ├── EditFundModal.tsx       # Active fund editor
-│   │   ├── EditInactiveModal.tsx   # Dormant fund editor
-│   │   └── NavChartModal.tsx       # Interactive 1-year historical chart
-│   ├── lib/
-│   │   ├── api.ts                  # Axios client definitions and endpoints
-│   │   └── exportUtils.ts          # CSV and Excel export generators
-│   └── package.json
-└── README.md
+### 1. Backend Setup
+```bash
+cd backend
+python -m venv venv
+
+# Activate virtual environment
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start FastAPI server
+uvicorn app.main:app --reload --port 8000
