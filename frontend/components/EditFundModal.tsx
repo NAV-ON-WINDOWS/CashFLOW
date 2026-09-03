@@ -3,112 +3,116 @@
 import { useState } from 'react';
 import api from '../lib/api';
 
-interface EditFundModalProps {
-  fund: {
-    scheme_code: string;
-    scheme_name: string;
-    units: number;
-    avg_buy_price: number;
-    folio_number?: string;
-  };
-  onClose: () => void;
-  onSuccess: () => void;
-}
-
-export default function EditFundModal({ fund, onClose, onSuccess }: EditFundModalProps) {
-  const [schemeName, setSchemeName] = useState(fund.scheme_name);
-  const [units, setUnits] = useState(fund.units.toString());
-  const [buyPrice, setBuyPrice] = useState(fund.avg_buy_price.toString());
-  const [folioNumber, setFolioNumber] = useState(fund.folio_number || '');
+export default function EditFundModal({ fund, onClose, onSuccess }: { fund: any; onClose: () => void; onSuccess: () => void }) {
+  const [formData, setFormData] = useState({
+    scheme_name: fund.scheme_name || '',
+    scheme_code: fund.scheme_code || '',
+    folio_number: fund.folio_number || '',
+    units: fund.units || '',
+    avg_buy_price: fund.avg_buy_price || '',
+    purchase_date: fund.purchase_date || '',
+  });
   const [loading, setLoading] = useState(false);
 
-  const handleUpdate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await api.put(`/portfolio/fund/${fund.scheme_code}`, {
-        scheme_name: schemeName.trim(),
-        units: parseFloat(units),
-        avg_buy_price: parseFloat(buyPrice),
-        folio_number: folioNumber.trim() || 'FOLIO-MAIN',
+        scheme_name: formData.scheme_name,
+        scheme_code: formData.scheme_code.trim(),
+        units: parseFloat(formData.units as string),
+        avg_buy_price: parseFloat(formData.avg_buy_price as string),
+        folio_number: formData.folio_number,
+        purchase_date: formData.purchase_date,
       });
       onSuccess();
     } catch (err: any) {
-      console.error(err);
-      alert(`Update failed: ${err.response?.data?.detail || err.message}`);
-    } finally {
+      const errorMsg = err.response?.data?.detail || err.message;
+      alert(`Failed to update active fund: ${errorMsg}`);
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800">Edit Fund Details</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-slate-800">Edit Active Portfolio Fund</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl font-medium">&times;</button>
         </div>
-
-        <form onSubmit={handleUpdate} className="space-y-4">
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Fund Name</label>
-            <input
-              type="text"
-              value={schemeName}
-              onChange={(e) => setSchemeName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              required
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Scheme Name</label>
+            <input 
+              type="text" 
+              required 
+              value={formData.scheme_name} 
+              onChange={e => setFormData({...formData, scheme_name: e.target.value})} 
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" 
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Units Held</label>
-              <input
-                type="number"
-                step="any"
-                value={units}
-                onChange={(e) => setUnits(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                required
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">AMFI Code</label>
+              <input 
+                type="text" 
+                value={formData.scheme_code} 
+                onChange={e => setFormData({...formData, scheme_code: e.target.value})} 
+                placeholder="e.g. 104908" 
+                className="w-full border border-slate-200 font-mono rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" 
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Avg Buy Price (₹)</label>
-              <input
-                type="number"
-                step="any"
-                value={buyPrice}
-                onChange={(e) => setBuyPrice(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                required
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Folio Number</label>
+              <input 
+                type="text" 
+                value={formData.folio_number} 
+                onChange={e => setFormData({...formData, folio_number: e.target.value})} 
+                placeholder="Optional" 
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" 
+              />
+            </div>
+            
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Units Held</label>
+              <input 
+                type="number" 
+                step="any" 
+                required 
+                value={formData.units} 
+                onChange={e => setFormData({...formData, units: e.target.value})} 
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" 
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Avg Buy Price (₹)</label>
+              <input 
+                type="number" 
+                step="any" 
+                required 
+                value={formData.avg_buy_price} 
+                onChange={e => setFormData({...formData, avg_buy_price: e.target.value})} 
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" 
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Purchase Date</label>
+              <input 
+                type="date" 
+                value={formData.purchase_date} 
+                onChange={e => setFormData({...formData, purchase_date: e.target.value})} 
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" 
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Folio Number</label>
-            <input
-              type="text"
-              value={folioNumber}
-              onChange={(e) => setFolioNumber(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50"
-            >
+          <div className="pt-4 flex space-x-3">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold text-sm rounded-lg hover:bg-slate-200 transition">Cancel</button>
+            <button type="submit" disabled={loading} className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
