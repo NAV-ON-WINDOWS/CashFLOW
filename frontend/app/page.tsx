@@ -107,16 +107,10 @@ export default function Home() {
   const combinedOverallReturn = totalCombinedInvested > 0 
     ? ((totalCombinedPnL / totalCombinedInvested) * 100).toFixed(2) 
     : '0.00';
-    
-  // 4. Combined Holdings for Master Allocation Chart
-  const combinedHoldings = [
-    ...(portfolio?.holdings || []),
-    ...(inactiveHoldings?.holdings || [])
-  ];
 
   if (!mounted || loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-700 font-sans">
+      <div className="flex h-screen items-center justify-center bg-[#f8fafc] text-slate-700 font-sans">
         <div className="animate-pulse text-lg font-medium flex flex-col items-center">
           <svg className="w-8 h-8 text-blue-500 mb-4 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -129,7 +123,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 text-slate-900 font-sans">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
       <header className="border-b border-slate-200 bg-white px-8 py-4 shadow-sm flex items-center justify-between sticky top-0 z-40">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">myCAMS Portfolio Monitor</h1>
@@ -177,7 +171,7 @@ export default function Home() {
             )}
           </div>
 
-          <div className="no-print flex items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+          <div className="no-print flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
             <button
               onClick={() => setActiveTab('overview')}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
@@ -206,7 +200,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab('watchlist')}
-            className={`no-print px-4 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+            className={`no-print px-4 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-200 ${
               activeTab === 'watchlist' ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
@@ -219,8 +213,7 @@ export default function Home() {
         {/* TAB 1: MASTER OVERVIEW */}
         {activeTab === 'overview' && portfolio && (
           <div className="space-y-6">
-            
-            {/* ROW 1: Sleek 4-Metric Grid */}
+            {/* Top 4 Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
@@ -295,100 +288,95 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ROW 2: Layout Grid (Side by Side) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Left Column: Portfolio Breakdowns */}
-              <div className="lg:col-span-1 flex flex-col gap-6">
-                
-                {/* Active Portfolio Card */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-hidden">
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Active Portfolio</h3>
-                        <p className="text-xs text-slate-500 mt-1">Currently contributing funds</p>
-                      </div>
-                      <span className="bg-blue-50 text-blue-700 text-[11px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide">
-                        {portfolio.holdings.length} Schemes
+            {/* Side-by-Side: Active vs Dormant Dedicated Dashboards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Active Portfolio Section */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+                <div className="p-6 pb-2">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Active Portfolio</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Currently active contributions</p>
+                    </div>
+                    <span className="bg-blue-50 text-blue-700 text-[11px] px-2.5 py-1 rounded-md font-bold uppercase">
+                      {portfolio.holdings.length} Schemes
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-100 mb-4 bg-slate-50/50 rounded-xl px-4">
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Invested</span>
+                      <span className="text-sm font-bold text-slate-800 font-mono">₹{activeInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Current Net</span>
+                      <span className="text-sm font-bold text-blue-600 font-mono">₹{activeCurrentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Live P&L</span>
+                      <span className={`text-sm font-bold font-mono ${activePnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {activePnL >= 0 ? '+' : '-'}₹{Math.abs(activePnL).toLocaleString('en-IN', { maximumFractionDigits: 0 })} ({activeReturnPct}%)
                       </span>
                     </div>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-end pb-3 border-b border-slate-50">
-                        <span className="text-xs text-slate-500 font-medium">Invested Value</span>
-                        <span className="text-sm font-bold text-slate-800 font-mono">₹{activeInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="flex justify-between items-end pb-3 border-b border-slate-50">
-                        <span className="text-xs text-slate-500 font-medium">Current Net Worth</span>
-                        <span className="text-sm font-bold text-slate-800 font-mono">₹{activeCurrentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="flex justify-between items-end">
-                        <span className="text-xs text-slate-500 font-medium">Live Unrealized P&L</span>
-                        <span className={`text-sm font-bold font-mono ${activePnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                          {activePnL >= 0 ? '+' : '-'}₹{Math.abs(activePnL).toLocaleString('en-IN', { maximumFractionDigits: 0 })} 
-                          <span className="text-xs ml-1">({activeReturnPct}%)</span>
-                        </span>
-                      </div>
-                    </div>
                   </div>
-                  <button
-                    onClick={() => setActiveTab('portfolio')}
-                    className="w-full py-3 bg-slate-50/50 hover:bg-slate-100/50 border-t border-slate-100 text-xs font-bold text-slate-600 transition flex items-center justify-center space-x-1"
-                  >
-                    <span>Manage Active Funds</span><span className="text-lg leading-none transition-transform group-hover:translate-x-1">→</span>
-                  </button>
-                </div>
 
-                {/* Dormant Portfolio Card */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-hidden">
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Dormant Portfolio</h3>
-                        <p className="text-xs text-slate-500 mt-1">Parked/Locked funds tracking AMFI</p>
-                      </div>
-                      <span className="bg-slate-100 text-slate-600 text-[11px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide">
-                        {inactiveHoldings?.holdings?.length || 0} Schemes
+                  <div className="[&>div]:border-none [&>div]:shadow-none [&>div]:mb-0 [&>div]:p-0">
+                    <AllocationChart holdings={portfolio.holdings} totalValue={activeCurrentValue} />
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('portfolio')}
+                  className="w-full py-3 bg-slate-50/70 hover:bg-slate-100/70 border-t border-slate-100 text-xs font-bold text-slate-700 transition flex items-center justify-center space-x-1"
+                >
+                  <span>Manage Active Portfolio</span>
+                  <span>→</span>
+                </button>
+              </div>
+
+              {/* Dormant Portfolio Section */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+                <div className="p-6 pb-2">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Dormant Portfolio</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Parked funds tracking AMFI</p>
+                    </div>
+                    <span className="bg-slate-100 text-slate-600 text-[11px] px-2.5 py-1 rounded-md font-bold uppercase">
+                      {inactiveHoldings?.holdings?.length || 0} Schemes
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-100 mb-4 bg-slate-50/50 rounded-xl px-4">
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Invested</span>
+                      <span className="text-sm font-bold text-slate-800 font-mono">₹{dormantInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Redeem Value</span>
+                      <span className="text-sm font-bold text-indigo-600 font-mono">₹{dormantCurrentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Live P&L</span>
+                      <span className={`text-sm font-bold font-mono ${dormantPnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {dormantPnL >= 0 ? '+' : '-'}₹{Math.abs(dormantPnL).toLocaleString('en-IN', { maximumFractionDigits: 0 })} ({dormantReturnPct}%)
                       </span>
                     </div>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-end pb-3 border-b border-slate-50">
-                        <span className="text-xs text-slate-500 font-medium">Invested Value</span>
-                        <span className="text-sm font-bold text-slate-800 font-mono">₹{dormantInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="flex justify-between items-end pb-3 border-b border-slate-50">
-                        <span className="text-xs text-slate-500 font-medium">Value if Redeemed</span>
-                        <span className="text-sm font-bold text-slate-800 font-mono">₹{dormantCurrentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="flex justify-between items-end">
-                        <span className="text-xs text-slate-500 font-medium">Live P&L if Redeemed</span>
-                        <span className={`text-sm font-bold font-mono ${dormantPnL >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                          {dormantPnL >= 0 ? '+' : '-'}₹{Math.abs(dormantPnL).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                          <span className="text-xs ml-1">({dormantReturnPct}%)</span>
-                        </span>
-                      </div>
-                    </div>
                   </div>
-                  <button
-                    onClick={() => setActiveTab('inactive')}
-                    className="w-full py-3 bg-slate-50/50 hover:bg-slate-100/50 border-t border-slate-100 text-xs font-bold text-slate-600 transition flex items-center justify-center space-x-1"
-                  >
-                    <span>Manage Dormant Funds</span><span className="text-lg leading-none transition-transform group-hover:translate-x-1">→</span>
-                  </button>
-                </div>
-              </div>
 
-              {/* Right Column: Master Allocation Chart */}
-              <div className="lg:col-span-2 flex h-full">
-                <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm [&>div]:border-none [&>div]:shadow-none [&>div]:mb-0 flex flex-col">
-                  {/* We are reusing the existing AllocationChart component here, but overriding its outer styles slightly via the wrapper above */}
-                  <AllocationChart 
-                    holdings={combinedHoldings} 
-                    totalValue={totalCombinedCurrentValue} 
-                  />
+                  {inactiveHoldings && (
+                    <div className="[&>div]:border-none [&>div]:shadow-none [&>div]:mb-0 [&>div]:p-0">
+                      <AllocationChart holdings={inactiveHoldings.holdings} totalValue={dormantCurrentValue} />
+                    </div>
+                  )}
                 </div>
+                <button
+                  onClick={() => setActiveTab('inactive')}
+                  className="w-full py-3 bg-slate-50/70 hover:bg-slate-100/70 border-t border-slate-100 text-xs font-bold text-slate-700 transition flex items-center justify-center space-x-1"
+                >
+                  <span>Manage Dormant Portfolio</span>
+                  <span>→</span>
+                </button>
               </div>
-
             </div>
           </div>
         )}
