@@ -4,7 +4,6 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0+-red?style=flat-square)](https://www.sqlalchemy.org/)
 [![AMFI API](https://img.shields.io/badge/Data-AMFI%20India-blue?style=flat-square)](https://www.amfiindia.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
 **CashFLOW** is a self-hosted personal mutual fund terminal and portfolio monitoring platform. It bridges the gap between static Consolidated Account Statements (CAS) and live financial tracking by ingesting raw daily NAV data directly from the **Association of Mutual Funds in India (AMFI)**. 
 
